@@ -4,8 +4,8 @@
 #include <RF24.h>
 
 
-const uint64_t pipeOut = 0xE9E8F0F0E1LL; //IMPORTANT: The same as in the receiver 0xE9E8F0F0E1LL
-RF24 radio(7, 8); // select CE,CSN pin |
+const uint64_t pipeOut = 0x0022;//0xE9E8F0F0E1LL; //IMPORTANT: The same as in the receiver 0xE9E8F0F0E1LL
+RF24 radio(10, 9); // select CE,CSN pin |
 
 struct Signal {
 byte throttle_a;

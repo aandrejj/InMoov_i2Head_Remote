@@ -34,8 +34,8 @@ byte yaw_b;
 
 Signal data;
 
-const uint64_t pipeIn = 0xE9E8F0F0E1LL;
-RF24 radio(7, 8);
+const uint64_t pipeIn = 0x0022; //0xE9E8F0F0E1LL;
+RF24 radio(10, 9);
 
 void ResetData()
 {
@@ -53,6 +53,12 @@ data.yaw_b = 127; // Center
 
 void setup()
 {
+  Serial.begin( 57600);
+  //Serial.begin(Baud, SERIAL_8N1);
+  Serial.println(" ");
+  Serial.print("Sketch:   ");   Serial.println(__FILE__);
+  Serial.print("Uploaded: ");   Serial.println(__DATE__);
+
 //Set the pins for each PWM signal
 ch1.attach(2);
 ch2.attach(3);
@@ -78,6 +84,7 @@ void recvData()
 while ( radio.available() ) {
 radio.read(&data, sizeof(Signal));
 lastRecvTime = millis();   // receive the data | 
+Serial.println("Chanels: "+String(data.throttle_a)+" "+String(data.pitch_a)+" | "+String(data.roll_a)+" "+String(data.yaw_a)+"| |"+String(data.throttle_b)+" "+String(data.pitch_b)+" | "+String(data.roll_b)+" "+String(data.yaw_b));
 }
 }
 
