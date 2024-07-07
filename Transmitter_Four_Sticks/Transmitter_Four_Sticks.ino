@@ -1,73 +1,63 @@
-
+/* Kod vysielača pre RF NANO
+Kod vysielača pre 4kanaly ,datove piny A0, A1, A2, A3
+// https://blog.laskakit.cz/projekt-rc-arduino/
+*/
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
-
-
-const uint64_t pipeOut = 0x0022;//0xE9E8F0F0E1LL; //IMPORTANT: The same as in the receiver 0xE9E8F0F0E1LL
-RF24 radio(10, 9); // select CE,CSN pin |
-
-struct Signal {
-byte throttle_a;
-byte pitch_a;
-byte roll_a;
-byte yaw_a;
-byte throttle_b;
-byte pitch_b;
-byte roll_b;
-byte yaw_b;
-};
-
-Signal data;
-
-void ResetData()
-{
-data.throttle_a = 127; // Motor Stop (254/2=127)(Signal lost position)
-data.pitch_a = 127; // Center (Signal lost position)
-data.roll_a = 127; // Center(Signal lost position)
-data.yaw_a = 127; // Center (Signal lost position )
-data.throttle_b = 127; // Center (Signal lost position )
-data.pitch_b = 127; // Center (Signal lost position )
-data.roll_b = 127; // Center (Signal lost position )
-data.yaw_b = 127; // Center (Signal lost position )
-}
-
+const uint64_t my_radio_pipe = 0x0022; //toto istý kod musí mať aj primač
+RF24 radio(10, 9);  //zapojenie CE a CSN pinov
+//maximalne 32 kanalov
+struct Data_to_be_sent {
+  byte ch1;
+  byte ch2;
+  byte ch3;
+  byte ch4;
+  byte ch5;
+  byte ch6;
+  byte ch7;
+  byte ch8;
+ };
+Data_to_be_sent sent_data;
 void setup()
 {
-//Start everything up
-
-radio.begin();
-radio.openWritingPipe(pipeOut);
-radio.stopListening(); //start the radio comunication for Transmitter
-ResetData();
+  Serial.begin(9600);
+  while (!Serial) {
+    ;  // wait for serial port to connect. Needed for native USB port only
+  }
+  Serial.println();
+  Serial.print("Sketch:   ");   Serial.println(__FILE__);
+  Serial.print("Uploaded: ");   Serial.println(__DATE__);
+  radio.begin();
+  radio.setAutoAck(false);
+  radio.setDataRate(RF24_250KBPS);
+  radio.openWritingPipe(my_radio_pipe);
+  //Resetujte každú hodnotu kanála
+  sent_data.ch1 = 127;
+  sent_data.ch2 = 127;
+  sent_data.ch3 = 127;
+  sent_data.ch4 = 127;
+  sent_data.ch5 = 127;
+  sent_data.ch6 = 127;
+  sent_data.ch7 = 127;
+  sent_data.ch8 = 127;
 }
-
-// Joystick center and its borders
-
-int mapJoystickValues(int val, int lower, int middle, int upper, bool reverse)
-{
-val = constrain(val, lower, upper);
-if ( val < middle )
-val = map(val, lower, middle, 0, 128);
-else
-val = map(val, middle, upper, 128, 255);
-return ( reverse ? 255 - val : val );
-}
-
-
 void loop()
 {
-// Control Stick Calibration
-// Setting may be required for the correct values of the control levers.
+/*Nastavenie Kanalov /velkosť vychiliek a reverz serv/
+  Normal:    data.ch1 = map( analogRead(A0), 0, 1024, 0, 255);
+  Reverz:  data.ch1 = map( analogRead(A0), 0, 1024, 255, 0);  */
+  
+  sent_data.ch1 = map( analogRead(A0), 0, 1000, 110, 220); //čierny
+  sent_data.ch2 = map( analogRead(A1), 0, 1124, 255, 60);  //žlta
+  sent_data.ch3 = map( analogRead(A2), 0, 1124, 240, 90); //modra
+  sent_data.ch4 = map( analogRead(A3), 0, 1020, 235, 80); //červeny
+  sent_data.ch5 = map( analogRead(A4), 0, 1000, 110, 220); //čierny
+  sent_data.ch6 = map( analogRead(A5), 0, 1124, 255, 60);  //žlta
+  sent_data.ch7 = map( analogRead(A6), 0, 1124, 240, 90); //modra
+  sent_data.ch8 = map( analogRead(A7), 0, 1020, 235, 80); //červeny
+  Serial.println("Chanels:"+String(sent_data.ch1)+", "+String(sent_data.ch2)+" | "+String(sent_data.ch3)+", "+String(sent_data.ch4)+" || "+String(sent_data.ch5)+", "+String(sent_data.ch6)+" | "+String(sent_data.ch7)+", "+String(sent_data.ch8));
 
-data.throttle_a = mapJoystickValues( analogRead(A0), 524, 524, 1015, false );
-data.roll_a = mapJoystickValues( analogRead(A1), 12, 524, 1020, true ); // "true" or "false" for servo direction
-data.pitch_a = mapJoystickValues( analogRead(A2), 12, 524, 1020, true ); // "true" or "false" for servo direction
-data.yaw_a = mapJoystickValues( analogRead(A3), 12, 524, 1020, true ); // "true" or "false" for servo direction
-data.throttle_b = mapJoystickValues( analogRead(A4), 12, 524, 1020, true ); // "true" or "false" for servo direction
-data.roll_b = mapJoystickValues( analogRead(A5), 12, 524, 1020, true ); // "true" or "false" for servo direction
-data.pitch_b = mapJoystickValues( analogRead(A6), 12, 524, 1020, true ); // "true" or "false" for servo direction
-data.yaw_b = mapJoystickValues( analogRead(A7), 12, 524, 1020, true ); // "true" or "false" for servo direction
-
-radio.write(&data, sizeof(Signal));
+    radio.write(&sent_data, sizeof(Data_to_be_sent));
+    
 }

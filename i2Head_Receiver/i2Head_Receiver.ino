@@ -1,117 +1,111 @@
+/* RF NANO Prímacovy kod 
+ * PWM vystup kanalov D2,D3,D4,D5,
+ // https://blog.laskakit.cz/projekt-rc-arduino/
+ */
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
 #include <Servo.h>
+//Define widths
+int ch_1 = 0;
+int ch_2 = 0;
+int ch_3 = 0;
+int ch_4 = 0;
+int ch_5 = 0;
+int ch_6 = 0;
+int ch_7 = 0;
+int ch_8 = 0;
 
-int ch_width_1 = 0;
-int ch_width_2 = 0;
-int ch_width_3 = 0;
-int ch_width_4 = 0;
-int ch_width_5 = 0;
-int ch_width_6 = 0;
-int ch_width_7 = 0;
-int ch_width_8 = 0;
-
-Servo ch1;
-Servo ch2;
-Servo ch3;
-Servo ch4;
-Servo ch5;
-Servo ch6;
-Servo ch7;
-Servo ch8;
-
-struct Signal {
-byte throttle_a;
-byte pitch_a;
-byte roll_a;
-byte yaw_a;
-byte throttle_b;
-byte pitch_b;
-byte roll_b;
-byte yaw_b;
+Servo PWM2;
+Servo PWM3;
+Servo PWM4;
+Servo PWM5;
+//Méžeme mať až 32 kanalov
+struct MyData {
+  byte ch1;
+  byte ch2;
+  byte ch3;
+  byte ch4;
+  byte ch5;
+  byte ch6;
+  byte ch7;
+  byte ch8;
 };
-
-Signal data;
-
-const uint64_t pipeIn = 0x0022; //0xE9E8F0F0E1LL;
-RF24 radio(10, 9);
-
-void ResetData()
+MyData data;
+const uint64_t pipeIn = 0x0022;   //Tento isty kod musi mať aj primač
+RF24 radio(10,9);  //zapojenie CE a CSN pinov
+void resetData()
 {
-// Define the inicial value of each data input.
-// The middle position for Potenciometers. (254/2=127)
-data.throttle_a = 127; // Motor Stop
-data.pitch_a = 127; // Center
-data.roll_a = 127; // Center
-data.yaw_a = 127; // Center
-data.throttle_b = 127; // Center
-data.pitch_b = 127; // Center
-data.roll_b = 127; // Center
-data.yaw_b = 127; // Center
+//Definujeme iniciálnu hodnotu každého vstupu údajov
+// potenciometre budú v strednej pozícii, takže 127 je v centre od 254
+  data.ch1 = 127;
+  data.ch2 = 127;
+  data.ch3 = 127;
+  data.ch4 = 127;
+  data.ch5 = 127;
+  data.ch6 = 127;
+  data.ch7 = 127;
+  data.ch8 = 127;
+
 }
 
 void setup()
 {
-  Serial.begin( 57600);
-  //Serial.begin(Baud, SERIAL_8N1);
-  Serial.println(" ");
+  Serial.begin(9600);
+  while (!Serial) {
+    ;  // wait for serial port to connect. Needed for native USB port only
+  }
+  Serial.println();
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
-
-//Set the pins for each PWM signal
-ch1.attach(2);
-ch2.attach(3);
-ch3.attach(4);
-ch4.attach(5);
-ch5.attach(1);
-ch6.attach(6);
-ch7.attach(9);
-ch8.attach(10);
-
-//Configure the NRF24 module
-ResetData();
-radio.begin();
-radio.openReadingPipe(1,pipeIn);
-
-radio.startListening(); //start the radio comunication for receiver
+  //Set the pins for each PWM signal
+  PWM2.attach(2);
+  PWM3.attach(3);
+  PWM4.attach(4);
+  PWM5.attach(5);
+  
+  //konfiguracia NRF24 
+  resetData();
+  radio.begin();
+  radio.setAutoAck(false);
+  radio.setDataRate(RF24_250KBPS);  
+  radio.openReadingPipe(1,pipeIn);
+    //začneme s rádiokomunikáciou
+  radio.startListening();
 }
-
 unsigned long lastRecvTime = 0;
-
 void recvData()
 {
 while ( radio.available() ) {
-radio.read(&data, sizeof(Signal));
-lastRecvTime = millis();   // receive the data | 
-Serial.println("Chanels: "+String(data.throttle_a)+" "+String(data.pitch_a)+" | "+String(data.roll_a)+" "+String(data.yaw_a)+"| |"+String(data.throttle_b)+" "+String(data.pitch_b)+" | "+String(data.roll_b)+" "+String(data.yaw_b));
+radio.read(&data, sizeof(MyData));
+lastRecvTime = millis(); //tu dostávame údaje
 }
 }
-
 void loop()
 {
 recvData();
 unsigned long now = millis();
-if ( now - lastRecvTime > 1000 ) {
-ResetData(); // Signal lost.. Reset data | 
+//Tu skontrolujeme, či sme stratili signál, ak by sme resetovali hodnoty
+if ( now - lastRecvTime > 1200 ) {
+//Stratený signál?
+resetData();
 }
+//Nastavenie koncovych a stred polôh
+ch_1 = map(data.ch1,  110, 210, 200, 2000);  //PWM vystup digital pin D1 čierny
+ch_2 = map(data.ch2,  100, 255, 200, 2000);  //PWM vystup digital pin D2 žltý
+ch_3 = map(data.ch3,  120, 245, 200, 2000);  //PWM vystup digital pin D3 modrý
+ch_4 = map(data.ch4,  100, 245, 200, 2000);  //PWM vystup digital pin D4 červeny
 
-ch_width_1 = map(data.throttle_a, 0, 255, 1000, 2000);
-ch_width_2 = map(data.pitch_a, 0, 255, 1000, 2000);
-ch_width_3 = map(data.roll_a, 0, 255, 1000, 2000);
-ch_width_4 = map(data.yaw_a, 0, 255, 1000, 2000);
-ch_width_5 = map(data.throttle_b, 0, 255, 1000, 2000);
-ch_width_6 = map(data.pitch_b, 0, 255, 1000, 2000);
-ch_width_7 = map(data.roll_b, 0, 255, 1000, 2000);
-ch_width_8 = map(data.yaw_b, 0, 255, 1000, 2000);
+ch_5 = map(data.ch5,  115, 210, 200, 2000);  //PWM vystup digital pin D5 čierny
+ch_6 = map(data.ch6,  100, 255, 200, 2000);  //PWM vystup digital pin D6 žltý
+ch_7 = map(data.ch7,  120, 245, 200, 2000);  //PWM vystup digital pin D7 modrý
+ch_8 = map(data.ch8,  100, 240, 200, 2000);  //PWM vystup digital pin D8 červeny
 
-// Write the PWM signal
-ch1.writeMicroseconds(ch_width_1);
-ch2.writeMicroseconds(ch_width_2);
-ch3.writeMicroseconds(ch_width_3);
-ch4.writeMicroseconds(ch_width_4);
-ch5.writeMicroseconds(ch_width_5);
-ch6.writeMicroseconds(ch_width_6);
-ch7.writeMicroseconds(ch_width_7);
-ch8.writeMicroseconds(ch_width_8);
-}
+Serial.println("Chanels:"+String(ch_1)+", "+String(ch_2)+" | "+String(ch_3)+", "+String(ch_4)+" || "+String(ch_5)+", "+String(ch_6)+" | "+String(ch_7)+", "+String(ch_8));
+//Teraz napíšeme signál PWM pomocou funkcie servo
+//PWM2.writeMicroseconds(ch_2);
+//PWM3.writeMicroseconds(ch_3);
+//PWM4.writeMicroseconds(ch_4);
+//PWM5.writeMicroseconds(ch_5);
+
+}//Koniec slučky
