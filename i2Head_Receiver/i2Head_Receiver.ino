@@ -5,6 +5,7 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include <Adafruit_PWMServoDriver.h>
 #include <Servo.h>
 //Define widths
 int ch_1 = 0;
@@ -34,6 +35,8 @@ struct MyData {
 MyData data;
 const uint64_t pipeIn = 0x0022;   //Tento isty kod musi mať aj primač
 RF24 radio(10,9);  //zapojenie CE a CSN pinov
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
 void resetData()
 {
 //Definujeme iniciálnu hodnotu každého vstupu údajov
@@ -58,11 +61,19 @@ void setup()
   Serial.println();
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
+
+  Serial.println("setup:: Servo Initialization started");
+	delay(200);
+  pwm.begin(); //pwm.begin(0);   0 = driver_ID
+  pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
+	Serial.println("setup: Servos on PCA9685  attached");
+  delay(20);
+
   //Set the pins for each PWM signal
-  PWM2.attach(2);
-  PWM3.attach(3);
-  PWM4.attach(4);
-  PWM5.attach(5);
+  //PWM2.attach(2);
+  //PWM3.attach(3);
+  //PWM4.attach(4);
+  //PWM5.attach(5);
   
   //konfiguracia NRF24 
   resetData();
@@ -76,21 +87,21 @@ void setup()
 unsigned long lastRecvTime = 0;
 void recvData()
 {
-while ( radio.available() ) {
-radio.read(&data, sizeof(MyData));
-lastRecvTime = millis(); //tu dostávame údaje
-}
+  while ( radio.available() ) {
+    radio.read(&data, sizeof(MyData));
+    lastRecvTime = millis(); //tu dostávame údaje
+  }
 }
 void loop()
 {
-recvData();
-unsigned long now = millis();
-//Tu skontrolujeme, či sme stratili signál, ak by sme resetovali hodnoty
-if ( now - lastRecvTime > 1200 ) {
-//Stratený signál?
-resetData();
-}
-//Nastavenie koncovych a stred polôh
+  recvData();
+  unsigned long now = millis();
+  //Tu skontrolujeme, či sme stratili signál, ak ano, tak by sme resetovali hodnoty
+  if ( now - lastRecvTime > 1200 ) {
+    //Stratený signál?
+    resetData();
+  }
+  //Nastavenie koncovych a stred polôh
 ch_1 = map(data.ch1,  110, 210, 200, 2000);  //PWM vystup digital pin D1 čierny
 ch_2 = map(data.ch2,  100, 255, 200, 2000);  //PWM vystup digital pin D2 žltý
 ch_3 = map(data.ch3,  120, 245, 200, 2000);  //PWM vystup digital pin D3 modrý
