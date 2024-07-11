@@ -35,6 +35,12 @@ byte prev_ch6 = 0;
 byte prev_ch7 = 0;
 byte prev_ch8 = 0;
 
+const int ledPin = LED_BUILTIN;  // 13   the number of the LED pin
+int ledState = LOW;  // ledState used to set the LED
+unsigned long previousLedMillis = 0;  // will store last time LED was updated
+
+long interval = 0;  // interval at which to blink (milliseconds)
+unsigned long currentMillis;
 const uint64_t my_radio_pipe = 0x0022; //toto istý kod musí mať aj primač
 RF24 radio(10, 9);  //zapojenie CE a CSN pinov
 //maximalne 32 kanalov
@@ -78,13 +84,23 @@ void setup()
   while (!Serial) {
     ;  // wait for serial port to connect. Needed for native USB port only
   }
+  pinMode(ledPin, OUTPUT);
+  //digitalWrite(ledPin, HIGH);
   Serial.println();
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
+  digitalWrite(ledPin, HIGH);
   radio.begin();
+  //digitalWrite(ledPin, HIGH);
   radio.setAutoAck(false);
+  //digitalWrite(ledPin, LOW);
   radio.setDataRate(RF24_250KBPS);
+  //digitalWrite(ledPin, HIGH);
   radio.openWritingPipe(my_radio_pipe);
+  //digitalWrite(ledPin, HIGH);
+  ledState = HIGH;
+  interval = 500;
+
   //Resetujte každú hodnotu kanála
   sent_data.ch1 = 127;
   sent_data.ch2 = 127;
@@ -155,6 +171,19 @@ void checkMaxMinValues() {
     tmp_all_minMaxValues_initialized = tmp_all_minMaxValues_initialized && minMaxValues_initialized[i];
   }
   all_minMaxValues_initialized = tmp_all_minMaxValues_initialized;
+  if(minMaxValuesChanged == true) {
+      interval = 1000;
+      invertLed(176);
+  } else {
+    if(all_minMaxValues_initialized == true) {
+      if(interval>0) {
+        ledState = LOW;
+        digitalWrite(ledPin, ledState);
+        interval = 0;
+        Serial.println("checkMaxMinValues:Led goes LOW");
+      }
+    }
+  }
   /*
   if((all_minMaxValues_initialized == true) &&(minMaxValuesChanged == true)){
     for (short i=0; i<=7; i++) {
@@ -165,12 +194,44 @@ void checkMaxMinValues() {
   */
 }
 
+void invertLed(int from){
+  previousLedMillis = currentMillis;
+  if (ledState == LOW) {
+    ledState = HIGH;
+  Serial.println("invertLed to HIGH, interval = "+String(interval) +", from ="+String(from)+".");
+  } else {
+    ledState = LOW;
+      Serial.println("invertLed To LOW, interval = "+String(interval) +", from ="+String(from)+".");
+  }
+  digitalWrite(ledPin, ledState);
+
+  if(all_minMaxValues_initialized == true) {
+    if(interval>0) {
+      ledState = LOW;
+      digitalWrite(ledPin, ledState);
+      interval = 0;
+      Serial.println("InvertLed: Led goes LOW, interval goes to 0");
+    }
+  }
+
+}
+
 void loop()
 {
-/*Nastavenie Kanalov /velkosť vychiliek a reverz serv/
+  /*
   Normal:    data.ch1 = map( analogRead(A0), 0, 1024, 0, 255);
   Reverz:  data.ch1 = map( analogRead(A0), 0, 1024, 255, 0);  */
+  
+  currentMillis = millis();
+  
+  if(interval > 0) {
+    if (currentMillis - previousLedMillis >= interval) {
+      invertLed(216);
+    }
+  }
+  
   if(all_center_points_initialized == false) {
+    interval = 500;
     setPreviousValues();
     ReadAnalogData();
     calibrateCenterPoints();
