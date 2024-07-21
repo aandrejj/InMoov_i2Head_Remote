@@ -31,25 +31,35 @@ int ch_5 = 0;
 int ch_6 = 0;
 int ch_7 = 0;
 int ch_8 = 0;
+byte ch[8]    = {   0,   0,   0,   0,   0,   0,   0,   0};
+byte prev_ch[8]    = {   0,   0,   0,   0,   0,   0,   0,   0};
 
-bool center_points_initialized;
-int ch_1_center = 0;
-int ch_2_center = 0;
-int ch_3_center = 0;
-int ch_4_center = 0;
-int ch_5_center = 0;
-int ch_6_center = 0;
-int ch_7_center = 0;
-int ch_8_center = 0;
+bool center_point_initialized[8] = {false, false, false, false, false, false, false, false};
+bool all_center_points_initialized = false;
+//bool center_points_initialized;
 
-int ch_1_constrained = 0;
-int ch_2_constrained = 0;
-int ch_3_constrained = 0;
-int ch_4_constrained = 0;
-int ch_5_constrained = 0;
-int ch_6_constrained = 0;
-int ch_7_constrained = 0;
-int ch_8_constrained = 0;
+byte ch_1_center = 0;
+byte ch_2_center = 0;
+byte ch_3_center = 0;
+byte ch_4_center = 0;
+byte ch_5_center = 0;
+byte ch_6_center = 0;
+byte ch_7_center = 0;
+byte ch_8_center = 0;
+
+byte ch_center[8]    = {   0,   0,   0,   0,   0,   0,   0,   0};
+
+
+byte ch_1_constrained = 0;
+byte ch_2_constrained = 0;
+byte ch_3_constrained = 0;
+byte ch_4_constrained = 0;
+byte ch_5_constrained = 0;
+byte ch_6_constrained = 0;
+byte ch_7_constrained = 0;
+byte ch_8_constrained = 0;
+byte ch_constrained[8]        = {   0,   0,   0,   0,   0,   0,   0,   0};
+byte prev_ch_constrained[8]        = {   0,   0,   0,   0,   0,   0,   0,   0};
 
 int servo_eyeLeftUD_Angle       ;
 int servo_eyeLeftLR_Angle       ;
