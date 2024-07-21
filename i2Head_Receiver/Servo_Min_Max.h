@@ -7,7 +7,7 @@
 #define SERVO_MIN_eyeRightUD        350
 #define SERVO_MAX_eyeRightUD        535
 #define SERVO_MIN_eyeRightLR        270
-#define SERVO_MAX_eyeRightLR        565
+#define SERVO_MAX_eyeRightLR        535
  
 #define SERVO_MIN_eyelidLeftUpper   135
 #define SERVO_MAX_eyelidLeftUpper   615

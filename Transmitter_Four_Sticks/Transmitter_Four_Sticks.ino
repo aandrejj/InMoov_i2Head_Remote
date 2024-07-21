@@ -190,6 +190,10 @@ void loop()
         } else {
           sent_data_ch[i] = (analogReadA[i] < centerAnalogReadA[i] ? map( analogReadA[i], 0, centerAnalogReadA[i], 0, 127) : map( analogReadA[i], centerAnalogReadA[i], 1023, 127, 255));  //žlta
         }
+
+        if( abs(sent_data_ch[i] - 127) < 2 ) {
+          sent_data_ch[i] = 127;
+        }
       }
 
       for (short i=0; i<=7; i++) {
