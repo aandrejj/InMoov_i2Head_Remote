@@ -104,13 +104,17 @@ void setCenterPoints() {
         }
         tmp_all_centers_initialized = tmp_all_centers_initialized && center_point_initialized[i];
       }//endfor
-      all_center_points_initialized = tmp_all_centers_initialized;
+      if(tmp_all_centers_initialized == true) {
+        Serial.println("setCenterPoints:all center points set. ");
+        all_center_points_initialized = true;
+      }
 
       if(all_center_points_initialized == true) {
-        Serial.println("setCenterPoints: All center points set.");
+        Serial.println("setCenterPoints: All center points set.  They are:  ----------------------------------------------------------------------");
         for (short i=0; i<=7; i++) {
           Serial.println("setCenterPoints: center_point_initialized["+String(i)+"] = "+String(center_point_initialized[i])+", ch_center["+String(i)+"] = "+String(ch_center[i])+".");
         }
+        Serial.println("setCenterPoints: All center points set. End ----------------------------------------------------------------------");
       }
     } else {
         Serial.println("setCenterPoints: waiting for received data. Center points not set.");
@@ -150,83 +154,84 @@ void loop()
       ch[8] = ch_constrained[7];  //PWM vystup digital pin D8 červeny //113
 
       data_changed = false;
-      for (short i=0; i<=7; i++) {
-        if(abs (prev_ch[i] - ch[i]) > 0 ) {
-          Serial.println("@3 Chanels: ch["+String(i)+"]:"+String(ch[i])+".");
+      for (short i=0; i<=8; i++) {
+        if(abs (prev_ch[i] - ch[i]) > 1 ) {
+          Serial.print("loop: @3 ----This chanel has changed: Chanel: ");
+          Serial.println("ch["+String(i)+"]:"+String(ch[i])+".");
           data_changed = true;
         }
         prev_ch[i] = ch[i];
       }
       // Serial.println("@3 Chanels:"+String(ch_1)+"("+String(data.ch1)+", c "+String(ch_1_center)+"), "+String(ch_2)+"("+String(data.ch2)+", c "+String(ch_2_center)+") | "+String(ch_3)+"("+String(data.ch3)+", c "+String(ch_3_center)+"), "+String(ch_4)+"("+String(data.ch4)+", c "+String(ch_4_center)+") || "+String(ch_5)+"("+String(data.ch5)+", c "+String(ch_5_center)+"), "+String(ch_6)+"("+String(data.ch6)+", c "+String(ch_6_center)+") | "+String(ch_7)+"("+String(data.ch7)+", c "+String(ch_7_center)+"), "+String(ch_8)+"("+String(data.ch8)+", c "+String(ch_8_center)+")");
       
-      servo_eyeLeftUD_Angle       = ch[1];
+      servo_eyeLeftUD_Angle       = 255 - ch[1];
       servo_eyeLeftLR_Angle       = ch[2];
       servo_eyeRightUD_Angle      = ch[1];
       servo_eyeRightLR_Angle      = ch[2];
 
-      servo_eyelidLeftUpper_Angle = ch[1] + (ch[3] - 127) + (ch[4] - 127);
-      servo_eyelidLeftLower_Angle = ch[2] - (ch[3] - 127) - (ch[4] - 127);
-      servo_eyelidRightUpper_Angle= ch[1] + (ch[3] - 127) - (ch[4] - 127);
-      servo_eyelidRightLower_Angle= ch[2] - (ch[3] - 127) + (ch[4] - 127);
+      servo_eyelidLeftUpper_Angle = (127 - (eyeToLip_Scale * (ch[1] - 127))) + (ch5ToLip_Scale * (127 - ch[5])) + (ch6ToLip_Scale * (127 - ch[6]));
+      servo_eyelidLeftLower_Angle = (127 - (eyeToLip_Scale * (ch[1] - 127))) - (ch5ToLip_Scale * (127 - ch[5])) + (ch6ToLip_Scale * (127 - ch[6]));
+      servo_eyelidRightUpper_Angle= (eyeToLip_Scale * (ch[1] - 127))  + 127  - (ch5ToLip_Scale * (127 - ch[5])) - (ch6ToLip_Scale * (127 - ch[6]));
+      servo_eyelidRightLower_Angle= (eyeToLip_Scale * (ch[1] - 127))  + 127  + (ch5ToLip_Scale * (127 - ch[5])) - (ch6ToLip_Scale * (127 - ch[6]));
 
-      servo_eyebrowRight_Angle    = ch[5] + (ch[6] - 127);
-      servo_eyebrowLeft_Angle     = ch[5] - (ch[6] - 127);
+      servo_eyebrowRight_Angle    = ch[4] + (127 - ch[3]);
+      servo_eyebrowLeft_Angle     = ch[4] - (127 - ch[3]);
       
-      servo_cheekRight_Angle      = ch[7] + (ch[8] - 127);
-      servo_cheekLeft_Angle       = ch[7] - (ch[8] - 127);
+      servo_cheekRight_Angle      = ch[7] + (127 - ch[8]);
+      servo_cheekLeft_Angle       = ch[7] - (127 - ch[8]);
       
       servo_upperLip_Angle        = 0;
       
-      servo_forheadRight_Angle    = ch[6] + (ch[5] - 127);
-      servo_forheadLeft_Angle     = ch[6] - (ch[5] - 127);
+      servo_forheadRight_Angle    = ch[6] + (127 - ch[5]);
+      servo_forheadLeft_Angle     = ch[6] - (127 - ch[5]);
       servo_Jaw_UpDown_Angle      = 0;
 
-/*
-      servo_eyeLeftUD_Angle       =map(servo_eyeLeftUD_Angle       , 0, 255, 1023, 0); 
-      servo_eyeLeftLR_Angle       =map(servo_eyeLeftLR_Angle       , 0, 255, 0, 1023); 
-      servo_eyeRightUD_Angle      =map(servo_eyeRightUD_Angle      , 0, 255, 0, 1023); 
-      servo_eyeRightLR_Angle      =map(servo_eyeRightLR_Angle      , 0, 255, 0, 1023);
-      servo_eyelidLeftUpper_Angle =map(servo_eyelidLeftUpper_Angle , 0, 255, 0, 1023); 
-      servo_eyelidLeftLower_Angle =map(servo_eyelidLeftLower_Angle , 0, 255, 0, 1023); 
-      servo_eyelidRightUpper_Angle=map(servo_eyelidRightUpper_Angle, 0, 255, 0, 1023); 
-      servo_eyelidRightLower_Angle=map(servo_eyelidRightLower_Angle, 0, 255, 0, 1023);
-      servo_eyebrowRight_Angle    =map(servo_eyebrowRight_Angle    , 0, 255, 0, 1023); 
-      servo_eyebrowLeft_Angle     =map(servo_eyebrowLeft_Angle     , 0, 255, 0, 1023);
-      servo_cheekRight_Angle      =map(servo_cheekRight_Angle      , 0, 255, 0, 1023); 
-      servo_cheekLeft_Angle       =map(servo_cheekLeft_Angle       , 0, 255, 0, 1023);
-      servo_upperLip_Angle        =map(servo_upperLip_Angle        , 0, 255, 0, 1023);
-      servo_forheadRight_Angle    =map(servo_forheadRight_Angle    , 0, 255, 0, 1023);
-      servo_forheadLeft_Angle     =map(servo_forheadLeft_Angle     , 0, 255, 0, 1023);
-      servo_Jaw_UpDown_Angle      =map(servo_Jaw_UpDown_Angle      , 0, 255, 0, 1023); 
-*/
-      servo_eyeLeftUD_Pwm       = map(servo_eyeLeftUD_Angle       , 0, 255, SERVO_MIN_eyeLeftUD ,       SERVO_MAX_eyeLeftUD);
-      servo_eyeLeftLR_Pwm       = map(servo_eyeLeftLR_Angle       , 0, 255, SERVO_MIN_eyeLeftLR ,       SERVO_MAX_eyeLeftLR);
-      servo_eyeRightUD_Pwm      = map(servo_eyeRightUD_Angle      , 0, 255, SERVO_MIN_eyeRightUD,       SERVO_MAX_eyeRightUD);
-      servo_eyeRightLR_Pwm      = map(servo_eyeRightLR_Angle      , 0, 255, SERVO_MIN_eyeRightLR,       SERVO_MAX_eyeRightLR); 
-      servo_eyelidLeftUpper_Pwm = map(servo_eyelidLeftUpper_Angle , 0, 255, SERVO_MIN_eyelidLeftUpper,  SERVO_MAX_eyelidLeftUpper);
-      servo_eyelidLeftLower_Pwm = map(servo_eyelidLeftLower_Angle , 0, 255, SERVO_MIN_eyelidLeftLower,  SERVO_MAX_eyelidLeftLower);
-      servo_eyelidRightUpper_Pwm= map(servo_eyelidRightUpper_Angle, 0, 255, SERVO_MIN_eyelidRightUpper, SERVO_MAX_eyelidRightUpper);
-      servo_eyelidRightLower_Pwm= map(servo_eyelidRightLower_Angle, 0, 255, SERVO_MIN_eyelidRightLower, SERVO_MAX_eyelidRightLower);
-      servo_eyebrowRight_Pwm    = map(servo_eyebrowRight_Angle    , 0, 255, SERVO_MIN_eyebrowRight,     SERVO_MAX_eyebrowRight);
-      servo_eyebrowLeft_Pwm     = map(servo_eyebrowLeft_Angle     , 0, 255, SERVO_MIN_eyebrowLeft,      SERVO_MAX_eyebrowLeft);
-      servo_cheekRight_Pwm      = map(servo_cheekRight_Angle      , 0, 255, SERVO_MIN_cheekRight,       SERVO_MAX_cheekRight);
-      servo_cheekLeft_Pwm       = map(servo_cheekLeft_Angle       , 0, 255, SERVO_MIN_cheekLeft,        SERVO_MAX_cheekLeft);
-      servo_upperLip_Pwm        = map(servo_upperLip_Angle        , 0, 255, SERVO_MIN_upperLip,         SERVO_MAX_upperLip);
-      servo_forheadRight_Pwm    = map(servo_forheadRight_Angle    , 0, 255, SERVO_MIN_forheadRight,     SERVO_MAX_forheadRight);
-      servo_forheadLeft_Pwm     = map(servo_forheadLeft_Angle     , 0, 255, SERVO_MIN_forheadLeft,      SERVO_MAX_forheadLeft);
-      servo_Jaw_UpDown_Pwm      = map(servo_Jaw_UpDown_Angle      , 0, 255, SERVO_MIN_Jaw_UpDown,       SERVO_MAX_Jaw_UpDown);
+
+
+      servo_eyeLeftUD_Angle        = constrain(servo_eyeLeftUD_Angle       , 0, 255);
+      servo_eyeLeftLR_Angle        = constrain(servo_eyeLeftLR_Angle       , 0, 255);
+      servo_eyeRightUD_Angle       = constrain(servo_eyeRightUD_Angle      , 0, 255);
+      servo_eyeRightLR_Angle       = constrain(servo_eyeRightLR_Angle      , 0, 255);
+      servo_eyelidLeftUpper_Angle  = constrain(servo_eyelidLeftUpper_Angle , 0, 255);
+      servo_eyelidLeftLower_Angle  = constrain(servo_eyelidLeftLower_Angle , 0, 255);
+      servo_eyelidRightUpper_Angle = constrain(servo_eyelidRightUpper_Angle, 0, 255);
+      servo_eyelidRightLower_Angle = constrain(servo_eyelidRightLower_Angle, 0, 255);
+      servo_eyebrowRight_Angle     = constrain(servo_eyebrowRight_Angle    , 0, 255);
+      servo_eyebrowLeft_Angle      = constrain(servo_eyebrowLeft_Angle     , 0, 255);
+      servo_cheekRight_Angle       = constrain(servo_cheekRight_Angle      , 0, 255);
+      servo_cheekLeft_Angle        = constrain(servo_cheekLeft_Angle       , 0, 255);
+      servo_upperLip_Angle         = constrain(servo_upperLip_Angle        , 0, 255);
+      servo_forheadRight_Angle     = constrain(servo_forheadRight_Angle    , 0, 255);
+      servo_forheadLeft_Angle      = constrain(servo_forheadLeft_Angle     , 0, 255);
+      servo_Jaw_UpDown_Angle       = constrain(servo_Jaw_UpDown_Angle      , 0, 255);
+
+      servo_eyeLeftUD_Pwm       = (servo_eyeLeftUD_Angle        < 127 ? map(servo_eyeLeftUD_Angle        , 0, 127, SERVO_MIN_eyeLeftUD,        SERVO_MID_eyeLeftUD )      : map(servo_eyeLeftUD_Angle,        127, 255, SERVO_MID_eyeLeftUD ,       SERVO_MAX_eyeLeftUD ));
+      servo_eyeLeftLR_Pwm       = (servo_eyeLeftLR_Angle        < 127 ? map(servo_eyeLeftLR_Angle        , 0, 127, SERVO_MIN_eyeLeftLR,        SERVO_MID_eyeLeftLR )      : map(servo_eyeLeftLR_Angle,        127, 255, SERVO_MID_eyeLeftLR ,       SERVO_MAX_eyeLeftLR ));
+      servo_eyeRightUD_Pwm      = (servo_eyeRightUD_Angle       < 127 ? map(servo_eyeRightUD_Angle       , 0, 127, SERVO_MIN_eyeRightUD,       SERVO_MID_eyeRightUD)      : map(servo_eyeRightUD_Angle,       127, 255, SERVO_MID_eyeRightUD,       SERVO_MAX_eyeRightUD));
+      servo_eyeRightLR_Pwm      = (servo_eyeRightLR_Angle       < 127 ? map(servo_eyeRightLR_Angle       , 0, 127, SERVO_MIN_eyeRightLR,       SERVO_MID_eyeRightLR)      : map(servo_eyeRightLR_Angle,       127, 255, SERVO_MID_eyeRightLR,       SERVO_MAX_eyeRightLR)); 
+      servo_eyelidLeftUpper_Pwm = (servo_eyelidLeftUpper_Angle  < 127 ?  map(servo_eyelidLeftUpper_Angle , 0, 127, SERVO_MIN_eyelidLeftUpper,  SERVO_MID_eyelidLeftUpper) : map(servo_eyelidLeftUpper_Angle , 127, 255, SERVO_MID_eyelidLeftUpper,  SERVO_MAX_eyelidLeftUpper));
+      servo_eyelidLeftLower_Pwm = (servo_eyelidLeftLower_Angle  < 127 ?  map(servo_eyelidLeftLower_Angle , 0, 127, SERVO_MIN_eyelidLeftLower,  SERVO_MID_eyelidLeftLower) : map(servo_eyelidLeftLower_Angle , 127, 255, SERVO_MID_eyelidLeftLower,  SERVO_MAX_eyelidLeftLower));
+      servo_eyelidRightUpper_Pwm= (servo_eyelidRightUpper_Angle < 127 ?  map(servo_eyelidRightUpper_Angle, 0, 127, SERVO_MIN_eyelidRightUpper, SERVO_MID_eyelidRightUpper): map(servo_eyelidRightUpper_Angle, 127, 255, SERVO_MID_eyelidRightUpper, SERVO_MAX_eyelidRightUpper));
+      servo_eyelidRightLower_Pwm= (servo_eyelidRightLower_Angle < 127 ?  map(servo_eyelidRightLower_Angle, 0, 127, SERVO_MIN_eyelidRightLower, SERVO_MID_eyelidRightLower): map(servo_eyelidRightLower_Angle, 127, 255, SERVO_MID_eyelidRightLower, SERVO_MAX_eyelidRightLower));
+      servo_eyebrowRight_Pwm    = (servo_eyebrowRight_Angle     < 127 ? map(servo_eyebrowRight_Angle     , 0, 127, SERVO_MIN_eyebrowRight,     SERVO_MID_eyebrowRight)    : map(servo_eyebrowRight_Angle    , 127, 255, SERVO_MID_eyebrowRight,     SERVO_MAX_eyebrowRight));
+      servo_eyebrowLeft_Pwm     = (servo_eyebrowLeft_Angle      < 127 ? map(servo_eyebrowLeft_Angle      , 0, 127, SERVO_MIN_eyebrowLeft,      SERVO_MID_eyebrowLeft)     : map(servo_eyebrowLeft_Angle     , 127, 255, SERVO_MID_eyebrowLeft,      SERVO_MAX_eyebrowLeft));
+      servo_cheekRight_Pwm      = (servo_cheekRight_Angle       < 127 ? map(servo_cheekRight_Angle       , 0, 127, SERVO_MIN_cheekRight,       SERVO_MID_cheekRight)      : map(servo_cheekRight_Angle      , 127, 255, SERVO_MID_cheekRight,       SERVO_MAX_cheekRight));
+      servo_cheekLeft_Pwm       = (servo_cheekLeft_Angle        < 127 ? map(servo_cheekLeft_Angle        , 0, 127, SERVO_MIN_cheekLeft,        SERVO_MID_cheekLeft)       : map(servo_cheekLeft_Angle       , 127, 255, SERVO_MID_cheekLeft,        SERVO_MAX_cheekLeft));
+      servo_upperLip_Pwm        = (servo_upperLip_Angle         < 127 ?  map(servo_upperLip_Angle        , 0, 127, SERVO_MIN_upperLip,         SERVO_MID_upperLip)        : map(servo_upperLip_Angle        , 127, 255, SERVO_MID_upperLip,         SERVO_MAX_upperLip));
+      servo_forheadRight_Pwm    = (servo_forheadRight_Angle     < 127 ? map(servo_forheadRight_Angle     , 0, 127, SERVO_MIN_forheadRight,     SERVO_MID_forheadRight)    : map(servo_forheadRight_Angle    , 127, 255, SERVO_MID_forheadRight,     SERVO_MAX_forheadRight));
+      servo_forheadLeft_Pwm     = (servo_forheadLeft_Angle      < 127 ? map(servo_forheadLeft_Angle      , 0, 127, SERVO_MIN_forheadLeft,      SERVO_MID_forheadLeft)     : map(servo_forheadLeft_Angle     , 127, 255, SERVO_MID_forheadLeft,      SERVO_MAX_forheadLeft));
+      servo_Jaw_UpDown_Pwm      = (servo_Jaw_UpDown_Angle       < 127 ? map(servo_Jaw_UpDown_Angle       , 0, 127, SERVO_MIN_Jaw_UpDown,       SERVO_MID_Jaw_UpDown)      : map(servo_Jaw_UpDown_Angle      , 127, 255, SERVO_MID_Jaw_UpDown,       SERVO_MAX_Jaw_UpDown));
 
       pwm.setPWM( i01_head_eyeLeftUD       , 0, servo_eyeLeftUD_Pwm);
       pwm.setPWM( i01_head_eyeLeftLR       , 0, servo_eyeLeftLR_Pwm);
-      
       pwm.setPWM( i01_head_eyeRightUD      , 0, servo_eyeRightUD_Pwm);
       pwm.setPWM( i01_head_eyeRightLR      , 0, servo_eyeRightLR_Pwm);
-      /*
+      
       pwm.setPWM( i01_head_eyelidLeftUpper , 0, servo_eyelidLeftUpper_Pwm);
       pwm.setPWM( i01_head_eyelidLeftLower , 0, servo_eyelidLeftLower_Pwm);
       pwm.setPWM( i01_head_eyelidRightUpper, 0, servo_eyelidRightUpper_Pwm);
       pwm.setPWM( i01_head_eyelidRightLower, 0, servo_eyelidRightLower_Pwm);
-
+      /*
       pwm.setPWM( i01_head_eyebrowRight    , 0, servo_eyebrowRight_Pwm);
       pwm.setPWM( i01_head_eyebrowLeft     , 0, servo_eyebrowLeft_Pwm);
 
@@ -242,9 +247,59 @@ void loop()
       */
 
       if(data_changed == true) {
-        //Serial.println("@4 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeLeftUD_Angle = "+String(servo_eyeLeftUD_Angle)+", servo_eyeLeftUD_Pwm = "+String(servo_eyeLeftUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeLeftLR_Angle = "+String(servo_eyeLeftLR_Angle)+", servo_eyeLeftLR_Pwm = "+String(servo_eyeLeftLR_Pwm)+".");
-        Serial.println("@5 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeRightUD_Angle = "+String(servo_eyeRightUD_Angle)+", servo_eyeRightUD_Pwm = "+String(servo_eyeRightUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeRightLR_Angle = "+String(servo_eyeRightLR_Angle)+", servo_eyeRightLR_Pwm = "+String(servo_eyeRightLR_Pwm)+".");
+        ////Serial.println("loop: @4 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeLeftUD_Angle = "+String(servo_eyeLeftUD_Angle)+", servo_eyeLeftUD_Pwm = "+String(servo_eyeLeftUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeLeftLR_Angle = "+String(servo_eyeLeftLR_Angle)+", servo_eyeLeftLR_Pwm = "+String(servo_eyeLeftLR_Pwm)+".");
+        //Serial.println("loop @5 data changed.  Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeRightUD_Angle = "+String(servo_eyeRightUD_Angle)+", servo_eyeRightUD_Pwm = "+String(servo_eyeRightUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeRightLR_Angle = "+String(servo_eyeRightLR_Angle)+", servo_eyeRightLR_Pwm = "+String(servo_eyeRightLR_Pwm)+".");
+        Serial.print("loop @5 changed. ");
+        if ((prev_servo_eyeLeftUD_Pwm        != servo_eyeLeftUD_Pwm      ) || (prev_servo_eyeRightUD_Pwm       != servo_eyeRightUD_Pwm      )) 
+          {
+            Serial.print(" ch[1] ="+String(ch[1])+", ");
+          }
+        if ((prev_servo_eyeLeftLR_Pwm        != servo_eyeLeftLR_Pwm      ) || (prev_servo_eyeRightLR_Pwm       != servo_eyeRightLR_Pwm      )) 
+          {
+            Serial.print(" ch[2] ="+String(ch[2])+", ");
+          }
+        if ((prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) || (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) || (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) || (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm))
+          {
+            //Serial.print(" <ch[1], ch[5], ch[6]> = ");
+            //Serial.print("<"+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+">, ");
+          }
+
+        if (prev_servo_eyeLeftUD_Pwm        != servo_eyeLeftUD_Pwm       ) {Serial.print("servo_eyeLeftUD_Pwm       :"+String(servo_eyeLeftUD_Pwm       )+", ");}
+        if (prev_servo_eyeLeftLR_Pwm        != servo_eyeLeftLR_Pwm       ) {Serial.print("servo_eyeLeftLR_Pwm       :"+String(servo_eyeLeftLR_Pwm       )+", ");}
+        if (prev_servo_eyeRightUD_Pwm       != servo_eyeRightUD_Pwm      ) {Serial.print("servo_eyeRightUD_Pwm      :"+String(servo_eyeRightUD_Pwm      )+", ");}
+        if (prev_servo_eyeRightLR_Pwm       != servo_eyeRightLR_Pwm      ) {Serial.print("servo_eyeRightLR_Pwm      :"+String(servo_eyeRightLR_Pwm      )+", ");}
+        if (prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) {Serial.print("servo_eyelidLeftUpper_Pwm :"+String(servo_eyelidLeftUpper_Pwm )+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+        if (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) {Serial.print("servo_eyelidLeftLower_Pwm :"+String(servo_eyelidLeftLower_Pwm )+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+        if (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) {Serial.print("servo_eyelidRightUpper_Pwm:"+String(servo_eyelidRightUpper_Pwm)+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+        if (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm) {Serial.print("servo_eyelidRightLower_Pwm:"+String(servo_eyelidRightLower_Pwm)+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+        if (prev_servo_eyebrowRight_Pwm     != servo_eyebrowRight_Pwm    ) {Serial.print("servo_eyebrowRight_Pwm    :"+String(servo_eyebrowRight_Pwm    )+", ");}
+        if (prev_servo_eyebrowLeft_Pwm      != servo_eyebrowLeft_Pwm     ) {Serial.print("servo_eyebrowLeft_Pwm     :"+String(servo_eyebrowLeft_Pwm     )+", ");}
+        if (prev_servo_cheekRight_Pwm       != servo_cheekRight_Pwm      ) {Serial.print("servo_cheekRight_Pwm      :"+String(servo_cheekRight_Pwm      )+", ");}
+        if (prev_servo_cheekLeft_Pwm        != servo_cheekLeft_Pwm       ) {Serial.print("servo_cheekLeft_Pwm       :"+String(servo_cheekLeft_Pwm       )+", ");}
+        if (prev_servo_upperLip_Pwm         != servo_upperLip_Pwm        ) {Serial.print("servo_upperLip_Pwm        :"+String(servo_upperLip_Pwm        )+", ");}
+        if (prev_servo_forheadRight_Pwm     != servo_forheadRight_Pwm    ) {Serial.print("servo_forheadRight_Pwm    :"+String(servo_forheadRight_Pwm    )+", ");}
+        if (prev_servo_forheadLeft_Pwm      != servo_forheadLeft_Pwm     ) {Serial.print("servo_forheadLeft_Pwm     :"+String(servo_forheadLeft_Pwm     )+", ");}
+        if (prev_servo_Jaw_UpDown_Pwm       != servo_Jaw_UpDown_Pwm      ) {Serial.print("servo_Jaw_UpDown_Pwm      :"+String(servo_Jaw_UpDown_Pwm      )+", ");}
+        Serial.println(".");
       }
+
+      prev_servo_eyeLeftUD_Pwm        = servo_eyeLeftUD_Pwm       ;
+      prev_servo_eyeLeftLR_Pwm        = servo_eyeLeftLR_Pwm       ;
+      prev_servo_eyeRightUD_Pwm       = servo_eyeRightUD_Pwm      ;
+      prev_servo_eyeRightLR_Pwm       = servo_eyeRightLR_Pwm      ;
+      prev_servo_eyelidLeftUpper_Pwm  = servo_eyelidLeftUpper_Pwm ;
+      prev_servo_eyelidLeftLower_Pwm  = servo_eyelidLeftLower_Pwm ;
+      prev_servo_eyelidRightUpper_Pwm = servo_eyelidRightUpper_Pwm;
+      prev_servo_eyelidRightLower_Pwm = servo_eyelidRightLower_Pwm;
+      prev_servo_eyebrowRight_Pwm     = servo_eyebrowRight_Pwm    ;
+      prev_servo_eyebrowLeft_Pwm      = servo_eyebrowLeft_Pwm     ;
+      prev_servo_cheekRight_Pwm       = servo_cheekRight_Pwm      ;
+      prev_servo_cheekLeft_Pwm        = servo_cheekLeft_Pwm       ;
+      prev_servo_upperLip_Pwm         = servo_upperLip_Pwm        ;
+      prev_servo_forheadRight_Pwm     = servo_forheadRight_Pwm    ;
+      prev_servo_forheadLeft_Pwm      = servo_forheadLeft_Pwm     ;
+      prev_servo_Jaw_UpDown_Pwm       = servo_Jaw_UpDown_Pwm      ;
+
     }
   }
 }
