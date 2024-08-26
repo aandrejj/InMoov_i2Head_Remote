@@ -23,6 +23,10 @@
 
 #define Jaw_UpDown                15
 
+#define eyeToLip_Scale  0.5 
+#define ch5ToLip_Scale  0.45 
+#define ch6ToLip_Scale  0.45 
+
 int ch_1 = 0;
 int ch_2 = 0;
 int ch_3 = 0;
@@ -31,8 +35,8 @@ int ch_5 = 0;
 int ch_6 = 0;
 int ch_7 = 0;
 int ch_8 = 0;
-byte ch[8]    = {   0,   0,   0,   0,   0,   0,   0,   0};
-byte prev_ch[8]    = {   0,   0,   0,   0,   0,   0,   0,   0};
+byte ch[9]    =      {   0,   0,   0,   0,   0,   0,   0,   0,  0};
+byte prev_ch[9]    = {   0,   0,   0,   0,   0,   0,   0,   0,  0};
 
 bool center_point_initialized[8] = {false, false, false, false, false, false, false, false};
 bool all_center_points_initialized = false;
@@ -94,3 +98,21 @@ int servo_upperLip_Pwm        ;
 int servo_forheadRight_Pwm    ;
 int servo_forheadLeft_Pwm     ;
 int servo_Jaw_UpDown_Pwm      ;
+
+int prev_servo_eyeLeftUD_Pwm       ;
+int prev_servo_eyeLeftLR_Pwm       ;
+int prev_servo_eyeRightUD_Pwm      ;
+int prev_servo_eyeRightLR_Pwm      ;
+int prev_servo_eyelidLeftUpper_Pwm ;
+int prev_servo_eyelidLeftLower_Pwm ;
+int prev_servo_eyelidRightUpper_Pwm;
+int prev_servo_eyelidRightLower_Pwm;
+int prev_servo_eyebrowRight_Pwm    ;
+int prev_servo_eyebrowLeft_Pwm     ;
+int prev_servo_cheekRight_Pwm      ;
+int prev_servo_cheekLeft_Pwm       ;
+int prev_servo_upperLip_Pwm        ;
+int prev_servo_forheadRight_Pwm    ;
+int prev_servo_forheadLeft_Pwm     ;
+int prev_servo_Jaw_UpDown_Pwm      ;
+
