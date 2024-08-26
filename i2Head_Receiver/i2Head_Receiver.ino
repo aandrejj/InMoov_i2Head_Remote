@@ -1,25 +1,21 @@
-/* RF NANO Prímacovy kod 
- * PWM vystup kanalov D2,D3,D4,D5,
+/* i2Head_Receiver  RF NANO Prímacovy kod 
  // https://blog.laskakit.cz/projekt-rc-arduino/
- */
+*/
+ 
+
+
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include <Adafruit_PWMServoDriver.h>
 #include <Servo.h>
-//Define widths
-int ch_1 = 0;
-int ch_2 = 0;
-int ch_3 = 0;
-int ch_4 = 0;
-int ch_5 = 0;
-int ch_6 = 0;
-int ch_7 = 0;
-int ch_8 = 0;
+#include "Servo_Min_Max.h"
+#include "i2Head_Receiver.h"
 
-Servo PWM2;
-Servo PWM3;
-Servo PWM4;
-Servo PWM5;
+//Servo PWM2;
+//Servo PWM3;
+//Servo PWM4;
+//Servo PWM5;
 //Méžeme mať až 32 kanalov
 struct MyData {
   byte ch1;
@@ -34,6 +30,12 @@ struct MyData {
 MyData data;
 const uint64_t pipeIn = 0x0022;   //Tento isty kod musi mať aj primač
 RF24 radio(10,9);  //zapojenie CE a CSN pinov
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
+unsigned long previousMillis = 0;
+const long interval = 20;
+
+
 void resetData()
 {
 //Definujeme iniciálnu hodnotu každého vstupu údajov
@@ -58,14 +60,18 @@ void setup()
   Serial.println();
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
-  //Set the pins for each PWM signal
-  PWM2.attach(2);
-  PWM3.attach(3);
-  PWM4.attach(4);
-  PWM5.attach(5);
+
+  Serial.println("setup:: Servo Initialization started");
+	delay(200);
+  pwm.begin(); //pwm.begin(0);   0 = driver_ID
+  pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
+	Serial.println("setup: Servos on PCA9685  attached");
+  //all_center_points_initialized = false;
+  delay(20);
   
   //konfiguracia NRF24 
   resetData();
+  all_center_points_initialized = true;
   radio.begin();
   radio.setAutoAck(false);
   radio.setDataRate(RF24_250KBPS);  
@@ -76,36 +82,169 @@ void setup()
 unsigned long lastRecvTime = 0;
 void recvData()
 {
-while ( radio.available() ) {
-radio.read(&data, sizeof(MyData));
-lastRecvTime = millis(); //tu dostávame údaje
+  while ( radio.available() ) {
+    radio.read(&data, sizeof(MyData));
+    lastRecvTime = millis(); //tu dostávame údaje
+  }
 }
+
+bool tmp_all_centers_initialized = false;
+void setCenterPoints() {
+    if(all_center_points_initialized == false) {
+
+      tmp_all_centers_initialized = true;
+
+      for (short i=0; i<=7; i++) {
+        if(center_point_initialized[i]==false){
+          if(abs(ch_constrained[i] - 127) < 2 ) {
+            Serial.println("setCenterPoints: i="+String(i)+".");
+            ch_center[i] = ch_constrained[i];
+            center_point_initialized[i]=true;
+          }
+        }
+        tmp_all_centers_initialized = tmp_all_centers_initialized && center_point_initialized[i];
+      }//endfor
+      all_center_points_initialized = tmp_all_centers_initialized;
+
+      if(all_center_points_initialized == true) {
+        Serial.println("setCenterPoints: All center points set.");
+        for (short i=0; i<=7; i++) {
+          Serial.println("setCenterPoints: center_point_initialized["+String(i)+"] = "+String(center_point_initialized[i])+", ch_center["+String(i)+"] = "+String(ch_center[i])+".");
+        }
+      }
+    } else {
+        Serial.println("setCenterPoints: waiting for received data. Center points not set.");
+    }
 }
+
+bool data_changed = false;
 void loop()
 {
-recvData();
-unsigned long now = millis();
-//Tu skontrolujeme, či sme stratili signál, ak by sme resetovali hodnoty
-if ( now - lastRecvTime > 1200 ) {
-//Stratený signál?
-resetData();
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {  // start timed event for read and send
+    previousMillis = currentMillis;
+  
+    recvData();
+
+    ch_constrained[0] = constrain(data.ch1, 0, 255);
+    ch_constrained[1] = constrain(data.ch2, 0, 255);
+    ch_constrained[2] = constrain(data.ch3, 0, 255);
+    ch_constrained[3] = constrain(data.ch4, 0, 255);
+    ch_constrained[4] = constrain(data.ch5, 0, 255);
+    ch_constrained[5] = constrain(data.ch6, 0, 255);
+    ch_constrained[6] = constrain(data.ch7, 0, 255);
+    ch_constrained[7] = constrain(data.ch8, 0, 255);
+    
+    if(all_center_points_initialized == false) {
+      setCenterPoints();
+    
+    } else {
+
+      ch[1] = ch_constrained[0];  //PWM vystup digital pin D1 čierny  //198
+      ch[2] = ch_constrained[1];  //PWM vystup digital pin D2 žltý    //116
+      ch[3] = ch_constrained[2];  //PWM vystup digital pin D3 modrý   //135
+      ch[4] = ch_constrained[3];  //PWM vystup digital pin D4 červeny //115
+      ch[5] = ch_constrained[4];  //PWM vystup digital pin D5 čierny  //197
+      ch[6] = ch_constrained[5];  //PWM vystup digital pin D6 žltý    //113
+      ch[7] = ch_constrained[6];  //PWM vystup digital pin D7 modrý   //128
+      ch[8] = ch_constrained[7];  //PWM vystup digital pin D8 červeny //113
+
+      data_changed = false;
+      for (short i=0; i<=7; i++) {
+        if(abs (prev_ch[i] - ch[i]) > 0 ) {
+          Serial.println("@3 Chanels: ch["+String(i)+"]:"+String(ch[i])+".");
+          data_changed = true;
+        }
+        prev_ch[i] = ch[i];
+      }
+      // Serial.println("@3 Chanels:"+String(ch_1)+"("+String(data.ch1)+", c "+String(ch_1_center)+"), "+String(ch_2)+"("+String(data.ch2)+", c "+String(ch_2_center)+") | "+String(ch_3)+"("+String(data.ch3)+", c "+String(ch_3_center)+"), "+String(ch_4)+"("+String(data.ch4)+", c "+String(ch_4_center)+") || "+String(ch_5)+"("+String(data.ch5)+", c "+String(ch_5_center)+"), "+String(ch_6)+"("+String(data.ch6)+", c "+String(ch_6_center)+") | "+String(ch_7)+"("+String(data.ch7)+", c "+String(ch_7_center)+"), "+String(ch_8)+"("+String(data.ch8)+", c "+String(ch_8_center)+")");
+      
+      servo_eyeLeftUD_Angle       = ch[1];
+      servo_eyeLeftLR_Angle       = ch[2];
+      servo_eyeRightUD_Angle      = ch[1];
+      servo_eyeRightLR_Angle      = ch[2];
+
+      servo_eyelidLeftUpper_Angle = ch[1] + (ch[3] - 127) + (ch[4] - 127);
+      servo_eyelidLeftLower_Angle = ch[2] - (ch[3] - 127) - (ch[4] - 127);
+      servo_eyelidRightUpper_Angle= ch[1] + (ch[3] - 127) - (ch[4] - 127);
+      servo_eyelidRightLower_Angle= ch[2] - (ch[3] - 127) + (ch[4] - 127);
+
+      servo_eyebrowRight_Angle    = ch[5] + (ch[6] - 127);
+      servo_eyebrowLeft_Angle     = ch[5] - (ch[6] - 127);
+      
+      servo_cheekRight_Angle      = ch[7] + (ch[8] - 127);
+      servo_cheekLeft_Angle       = ch[7] - (ch[8] - 127);
+      
+      servo_upperLip_Angle        = 0;
+      
+      servo_forheadRight_Angle    = ch[6] + (ch[5] - 127);
+      servo_forheadLeft_Angle     = ch[6] - (ch[5] - 127);
+      servo_Jaw_UpDown_Angle      = 0;
+
+/*
+      servo_eyeLeftUD_Angle       =map(servo_eyeLeftUD_Angle       , 0, 255, 1023, 0); 
+      servo_eyeLeftLR_Angle       =map(servo_eyeLeftLR_Angle       , 0, 255, 0, 1023); 
+      servo_eyeRightUD_Angle      =map(servo_eyeRightUD_Angle      , 0, 255, 0, 1023); 
+      servo_eyeRightLR_Angle      =map(servo_eyeRightLR_Angle      , 0, 255, 0, 1023);
+      servo_eyelidLeftUpper_Angle =map(servo_eyelidLeftUpper_Angle , 0, 255, 0, 1023); 
+      servo_eyelidLeftLower_Angle =map(servo_eyelidLeftLower_Angle , 0, 255, 0, 1023); 
+      servo_eyelidRightUpper_Angle=map(servo_eyelidRightUpper_Angle, 0, 255, 0, 1023); 
+      servo_eyelidRightLower_Angle=map(servo_eyelidRightLower_Angle, 0, 255, 0, 1023);
+      servo_eyebrowRight_Angle    =map(servo_eyebrowRight_Angle    , 0, 255, 0, 1023); 
+      servo_eyebrowLeft_Angle     =map(servo_eyebrowLeft_Angle     , 0, 255, 0, 1023);
+      servo_cheekRight_Angle      =map(servo_cheekRight_Angle      , 0, 255, 0, 1023); 
+      servo_cheekLeft_Angle       =map(servo_cheekLeft_Angle       , 0, 255, 0, 1023);
+      servo_upperLip_Angle        =map(servo_upperLip_Angle        , 0, 255, 0, 1023);
+      servo_forheadRight_Angle    =map(servo_forheadRight_Angle    , 0, 255, 0, 1023);
+      servo_forheadLeft_Angle     =map(servo_forheadLeft_Angle     , 0, 255, 0, 1023);
+      servo_Jaw_UpDown_Angle      =map(servo_Jaw_UpDown_Angle      , 0, 255, 0, 1023); 
+*/
+      servo_eyeLeftUD_Pwm       = map(servo_eyeLeftUD_Angle       , 0, 255, SERVO_MIN_eyeLeftUD ,       SERVO_MAX_eyeLeftUD);
+      servo_eyeLeftLR_Pwm       = map(servo_eyeLeftLR_Angle       , 0, 255, SERVO_MIN_eyeLeftLR ,       SERVO_MAX_eyeLeftLR);
+      servo_eyeRightUD_Pwm      = map(servo_eyeRightUD_Angle      , 0, 255, SERVO_MIN_eyeRightUD,       SERVO_MAX_eyeRightUD);
+      servo_eyeRightLR_Pwm      = map(servo_eyeRightLR_Angle      , 0, 255, SERVO_MIN_eyeRightLR,       SERVO_MAX_eyeRightLR); 
+      servo_eyelidLeftUpper_Pwm = map(servo_eyelidLeftUpper_Angle , 0, 255, SERVO_MIN_eyelidLeftUpper,  SERVO_MAX_eyelidLeftUpper);
+      servo_eyelidLeftLower_Pwm = map(servo_eyelidLeftLower_Angle , 0, 255, SERVO_MIN_eyelidLeftLower,  SERVO_MAX_eyelidLeftLower);
+      servo_eyelidRightUpper_Pwm= map(servo_eyelidRightUpper_Angle, 0, 255, SERVO_MIN_eyelidRightUpper, SERVO_MAX_eyelidRightUpper);
+      servo_eyelidRightLower_Pwm= map(servo_eyelidRightLower_Angle, 0, 255, SERVO_MIN_eyelidRightLower, SERVO_MAX_eyelidRightLower);
+      servo_eyebrowRight_Pwm    = map(servo_eyebrowRight_Angle    , 0, 255, SERVO_MIN_eyebrowRight,     SERVO_MAX_eyebrowRight);
+      servo_eyebrowLeft_Pwm     = map(servo_eyebrowLeft_Angle     , 0, 255, SERVO_MIN_eyebrowLeft,      SERVO_MAX_eyebrowLeft);
+      servo_cheekRight_Pwm      = map(servo_cheekRight_Angle      , 0, 255, SERVO_MIN_cheekRight,       SERVO_MAX_cheekRight);
+      servo_cheekLeft_Pwm       = map(servo_cheekLeft_Angle       , 0, 255, SERVO_MIN_cheekLeft,        SERVO_MAX_cheekLeft);
+      servo_upperLip_Pwm        = map(servo_upperLip_Angle        , 0, 255, SERVO_MIN_upperLip,         SERVO_MAX_upperLip);
+      servo_forheadRight_Pwm    = map(servo_forheadRight_Angle    , 0, 255, SERVO_MIN_forheadRight,     SERVO_MAX_forheadRight);
+      servo_forheadLeft_Pwm     = map(servo_forheadLeft_Angle     , 0, 255, SERVO_MIN_forheadLeft,      SERVO_MAX_forheadLeft);
+      servo_Jaw_UpDown_Pwm      = map(servo_Jaw_UpDown_Angle      , 0, 255, SERVO_MIN_Jaw_UpDown,       SERVO_MAX_Jaw_UpDown);
+
+      pwm.setPWM( i01_head_eyeLeftUD       , 0, servo_eyeLeftUD_Pwm);
+      pwm.setPWM( i01_head_eyeLeftLR       , 0, servo_eyeLeftLR_Pwm);
+      
+      pwm.setPWM( i01_head_eyeRightUD      , 0, servo_eyeRightUD_Pwm);
+      pwm.setPWM( i01_head_eyeRightLR      , 0, servo_eyeRightLR_Pwm);
+      /*
+      pwm.setPWM( i01_head_eyelidLeftUpper , 0, servo_eyelidLeftUpper_Pwm);
+      pwm.setPWM( i01_head_eyelidLeftLower , 0, servo_eyelidLeftLower_Pwm);
+      pwm.setPWM( i01_head_eyelidRightUpper, 0, servo_eyelidRightUpper_Pwm);
+      pwm.setPWM( i01_head_eyelidRightLower, 0, servo_eyelidRightLower_Pwm);
+
+      pwm.setPWM( i01_head_eyebrowRight    , 0, servo_eyebrowRight_Pwm);
+      pwm.setPWM( i01_head_eyebrowLeft     , 0, servo_eyebrowLeft_Pwm);
+
+      pwm.setPWM( i01_head_cheekRight      , 0, servo_cheekRight_Pwm);
+      pwm.setPWM( i01_head_cheekLeft       , 0, servo_cheekLeft_Pwm);
+
+      pwm.setPWM( i01_head_upperLip        , 0, servo_upperLip_Pwm);
+
+      pwm.setPWM( i01_head_forheadRight    , 0, servo_forheadRight_Pwm);
+      pwm.setPWM( i01_head_forheadLeft     , 0, servo_forheadLeft_Pwm);
+
+      pwm.setPWM( Jaw_UpDown               , 0, servo_Jaw_UpDown_Pwm);
+      */
+
+      if(data_changed == true) {
+        //Serial.println("@4 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeLeftUD_Angle = "+String(servo_eyeLeftUD_Angle)+", servo_eyeLeftUD_Pwm = "+String(servo_eyeLeftUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeLeftLR_Angle = "+String(servo_eyeLeftLR_Angle)+", servo_eyeLeftLR_Pwm = "+String(servo_eyeLeftLR_Pwm)+".");
+        Serial.println("@5 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeRightUD_Angle = "+String(servo_eyeRightUD_Angle)+", servo_eyeRightUD_Pwm = "+String(servo_eyeRightUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeRightLR_Angle = "+String(servo_eyeRightLR_Angle)+", servo_eyeRightLR_Pwm = "+String(servo_eyeRightLR_Pwm)+".");
+      }
+    }
+  }
 }
-//Nastavenie koncovych a stred polôh
-ch_1 = map(data.ch1,  110, 210, 200, 2000);  //PWM vystup digital pin D1 čierny
-ch_2 = map(data.ch2,  100, 255, 200, 2000);  //PWM vystup digital pin D2 žltý
-ch_3 = map(data.ch3,  120, 245, 200, 2000);  //PWM vystup digital pin D3 modrý
-ch_4 = map(data.ch4,  100, 245, 200, 2000);  //PWM vystup digital pin D4 červeny
-
-ch_5 = map(data.ch5,  115, 210, 200, 2000);  //PWM vystup digital pin D5 čierny
-ch_6 = map(data.ch6,  100, 255, 200, 2000);  //PWM vystup digital pin D6 žltý
-ch_7 = map(data.ch7,  120, 245, 200, 2000);  //PWM vystup digital pin D7 modrý
-ch_8 = map(data.ch8,  100, 240, 200, 2000);  //PWM vystup digital pin D8 červeny
-
-Serial.println("Chanels:"+String(ch_1)+", "+String(ch_2)+" | "+String(ch_3)+", "+String(ch_4)+" || "+String(ch_5)+", "+String(ch_6)+" | "+String(ch_7)+", "+String(ch_8));
-//Teraz napíšeme signál PWM pomocou funkcie servo
-//PWM2.writeMicroseconds(ch_2);
-//PWM3.writeMicroseconds(ch_3);
-//PWM4.writeMicroseconds(ch_4);
-//PWM5.writeMicroseconds(ch_5);
-
-}//Koniec slučky
