@@ -12,6 +12,27 @@
 #include "Servo_Min_Max.h"
 #include "i2Head_Receiver.h"
 
+#include "EasyTransfer.h"
+#include "SoftwareSerial.h"
+#include "TxRx_dataStructures.h"
+
+//#define HIGHSPEED 
+#define SERIAL_OUTPUT_LINE_RX 2  // Bluetooth RX -> Arduino D9
+#define SERIAL_OUTPUT_LINE_TX 3 // Bluetooth TX -> Arduino D10
+
+#ifdef HIGHSPEED
+  #define Baud 38400   // Serial monitor
+  #define BTBaud 38400 // There is only one speed for configuring HC-05, and that is 38400.
+#else
+  #define Baud 9600    // Serial monitor
+  #define BTBaud 9600  // HM-10, HM-19 etc
+#endif
+
+int16_t mode;
+int count;
+int noDataCount;
+
+
 //Servo PWM2;
 //Servo PWM3;
 //Servo PWM4;
@@ -34,6 +55,23 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 unsigned long previousMillis = 0;
 const long interval = 20;
+
+long previousSafetyMillis;
+
+unsigned long previousServoMillis=0;
+const long servoInterval = 200;
+
+unsigned long previousMillis_SerialLine = 0;
+const long interval_SerialLine = 150;
+
+SoftwareSerial serialOutputLine(SERIAL_OUTPUT_LINE_TX, SERIAL_OUTPUT_LINE_RX);
+//create object
+EasyTransfer serialLine; // send serial
+//EasyTransfer ET1;   // send serial
+//EasyTransfer ET2;   // rec serial
+
+RX_DATA_STRUCTURE mydata_received;
+TX_DATA_STRUCTURE mydata_remote;
 
 
 void resetData()
@@ -78,14 +116,29 @@ void setup()
   radio.openReadingPipe(1,pipeIn);
     //začneme s rádiokomunikáciou
   radio.startListening();
+
+  serialOutputLine.begin(BTBaud);
+
+  serialLine.begin(details(mydata_received), &serialOutputLine);
+  //ET1.begin(details(mydata_send), &serialOutputLine);
+  //ET2.begin(details(mydata_remote), &serialOutputLine);
+
+  Serial.println("setup:done. setup END.");
+
 }
+
+
+
 unsigned long lastRecvTime = 0;
-void recvData()
+bool recvData()
 {
+  bool dataReceived = false;
   while ( radio.available() ) {
     radio.read(&data, sizeof(MyData));
     lastRecvTime = millis(); //tu dostávame údaje
+    dataReceived = true;
   }
+  return dataReceived;
 }
 
 bool tmp_all_centers_initialized = false;
@@ -121,27 +174,36 @@ void setCenterPoints() {
     }
 }
 
+//-------------------------loop------------------------------------------------
+//-------------------------loop------------------------------------------------
+//-------------------------loop------------------------------------------------
+//-------------------------loop------------------------------------------------
 bool data_changed = false;
+bool dataReceived = false;
 void loop()
 {
+  dataReceived = false;
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {  // start timed event for read and send
     previousMillis = currentMillis;
   
-    recvData();
+    dataReceived = recvData();
+    if(dataReceived) {
+      ch_constrained[0] = constrain(data.ch1, 0, 255);
+      ch_constrained[1] = constrain(data.ch2, 0, 255);
+      ch_constrained[2] = constrain(data.ch3, 0, 255);
+      ch_constrained[3] = constrain(data.ch4, 0, 255);
+      ch_constrained[4] = constrain(data.ch5, 0, 255);
+      ch_constrained[5] = constrain(data.ch6, 0, 255);
+      ch_constrained[6] = constrain(data.ch7, 0, 255);
+      ch_constrained[7] = constrain(data.ch8, 0, 255);
+    } else {
+      loop_ReadFromSerialLine(currentMillis);
+    }
 
-    ch_constrained[0] = constrain(data.ch1, 0, 255);
-    ch_constrained[1] = constrain(data.ch2, 0, 255);
-    ch_constrained[2] = constrain(data.ch3, 0, 255);
-    ch_constrained[3] = constrain(data.ch4, 0, 255);
-    ch_constrained[4] = constrain(data.ch5, 0, 255);
-    ch_constrained[5] = constrain(data.ch6, 0, 255);
-    ch_constrained[6] = constrain(data.ch7, 0, 255);
-    ch_constrained[7] = constrain(data.ch8, 0, 255);
-    
+
     if(all_center_points_initialized == false) {
       setCenterPoints();
-    
     } else {
 
       ch[1] = ch_constrained[0];  //PWM vystup digital pin D1 čierny  //198
@@ -309,4 +371,28 @@ void loop()
 
     }
   }
+}
+
+void loop_ReadFromSerialLine(unsigned long currentMillis) {
+  if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) {  // start timed event for read and send
+    previousMillis_SerialLine = currentMillis;
+
+    if(serialLine.receiveData()){ //ET2.receiveData())            // main data receive
+      previousSafetyMillis = currentMillis; 
+      //mydata_send.mode = mode;
+      //mydata_send.count = count;
+      //ToDo here
+      Serial.println("loop_ReadFromSerialLine:mydata_received = 0:" + String(mydata_received.s00) +", 1:" + String(mydata_received.s01) +", 2:" + String(mydata_received.s02) +", 3:" + String(mydata_received.s03));
+      count = count + 1;                                              // update count for remote monitoring
+    } else if(currentMillis - previousSafetyMillis > 200) {         // safeties
+      noDataCount = noDataCount + 1;                                  // update count for remote monitoring
+      Serial.println("!"+String(noDataCount)+"! No Data ");
+    }
+  }  // end of timed event Receive/Send
+
+  if (currentMillis - previousServoMillis >= servoInterval) {  // start timed event for Servos  (200 ms)
+	previousServoMillis = currentMillis;
+	//ToDo here
+  }
+	  
 }
