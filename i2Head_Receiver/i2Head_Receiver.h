@@ -54,16 +54,16 @@ byte ch_8_center = 0;
 byte ch_center[8]    = {   0,   0,   0,   0,   0,   0,   0,   0};
 
 
-byte ch_1_constrained = 0;
-byte ch_2_constrained = 0;
-byte ch_3_constrained = 0;
-byte ch_4_constrained = 0;
-byte ch_5_constrained = 0;
-byte ch_6_constrained = 0;
-byte ch_7_constrained = 0;
-byte ch_8_constrained = 0;
+//byte ch_1_constrained = 0;
+//byte ch_2_constrained = 0;
+//byte ch_3_constrained = 0;
+//byte ch_4_constrained = 0;
+//byte ch_5_constrained = 0;
+//byte ch_6_constrained = 0;
+//byte ch_7_constrained = 0;
+//byte ch_8_constrained = 0;
 byte ch_constrained[8]        = {   0,   0,   0,   0,   0,   0,   0,   0};
-byte prev_ch_constrained[8]        = {   0,   0,   0,   0,   0,   0,   0,   0};
+//byte prev_ch_constrained[8]        = {   0,   0,   0,   0,   0,   0,   0,   0};
 
 int servo_eyeLeftUD_Angle       ;
 int servo_eyeLeftLR_Angle       ;
