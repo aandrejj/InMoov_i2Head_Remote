@@ -3,6 +3,9 @@
 */
  
 
+#define USE_RF_REMOTE
+//#define USE_SERIAL_LINE
+
 
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -71,7 +74,8 @@ EasyTransfer serialLine; // send serial
 //EasyTransfer ET2;   // rec serial
 
 RX_DATA_STRUCTURE mydata_received;
-TX_DATA_STRUCTURE mydata_remote;
+RX_DATA_STRUCTURE prev_mydata;
+//TX_DATA_STRUCTURE mydata_remote;
 
 
 void resetData()
@@ -91,7 +95,7 @@ void resetData()
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(19200);
   while (!Serial) {
     ;  // wait for serial port to connect. Needed for native USB port only
   }
@@ -109,25 +113,26 @@ void setup()
   
   //konfiguracia NRF24 
   resetData();
-  all_center_points_initialized = true;
-  radio.begin();
-  radio.setAutoAck(false);
-  radio.setDataRate(RF24_250KBPS);  
-  radio.openReadingPipe(1,pipeIn);
+  //all_center_points_initialized = true;
+  #ifdef USE_RF_REMOTE
+    radio.begin();
+    radio.setAutoAck(false);
+    radio.setDataRate(RF24_250KBPS);  
+    radio.openReadingPipe(1,pipeIn);
     //začneme s rádiokomunikáciou
-  radio.startListening();
+    radio.startListening();
+    Serial.println("setup: rf-radio started");
+  #endif
 
-  serialOutputLine.begin(BTBaud);
+  #ifdef USE_SERIAL_LINE
+    serialOutputLine.begin(BTBaud);
 
-  serialLine.begin(details(mydata_received), &serialOutputLine);
-  //ET1.begin(details(mydata_send), &serialOutputLine);
-  //ET2.begin(details(mydata_remote), &serialOutputLine);
+    serialLine.begin(details(mydata_received), &serialOutputLine);
+    Serial.println("setup: serialLine started");
+  #endif
 
   Serial.println("setup:done. setup END.");
-
 }
-
-
 
 unsigned long lastRecvTime = 0;
 bool recvData()
@@ -141,132 +146,181 @@ bool recvData()
   return dataReceived;
 }
 
-bool tmp_all_centers_initialized = false;
-void setCenterPoints() {
-    if(all_center_points_initialized == false) {
-
-      tmp_all_centers_initialized = true;
-
-      for (short i=0; i<=7; i++) {
-        if(center_point_initialized[i]==false){
-          if(abs(ch_constrained[i] - 127) < 2 ) {
-            Serial.println("setCenterPoints: i="+String(i)+".");
-            ch_center[i] = ch_constrained[i];
-            center_point_initialized[i]=true;
-          }
-        }
-        tmp_all_centers_initialized = tmp_all_centers_initialized && center_point_initialized[i];
-      }//endfor
-      if(tmp_all_centers_initialized == true) {
-        Serial.println("setCenterPoints:all center points set. ");
-        all_center_points_initialized = true;
-      }
-
-      if(all_center_points_initialized == true) {
-        Serial.println("setCenterPoints: All center points set.  They are:  ----------------------------------------------------------------------");
-        for (short i=0; i<=7; i++) {
-          Serial.println("setCenterPoints: center_point_initialized["+String(i)+"] = "+String(center_point_initialized[i])+", ch_center["+String(i)+"] = "+String(ch_center[i])+".");
-        }
-        Serial.println("setCenterPoints: All center points set. End ----------------------------------------------------------------------");
-      }
-    } else {
-        Serial.println("setCenterPoints: waiting for received data. Center points not set.");
-    }
-}
-
 //-------------------------loop------------------------------------------------
 //-------------------------loop------------------------------------------------
 //-------------------------loop------------------------------------------------
 //-------------------------loop------------------------------------------------
-bool data_changed = false;
-bool dataReceived = false;
+bool RF_data_changed = false;
+bool serial_data_changed = false;
+bool remoteDataReceived = false;
+bool serialDataReceived = false;
 void loop()
 {
-  dataReceived = false;
+  remoteDataReceived = false;
   unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {  // start timed event for read and send
-    previousMillis = currentMillis;
   
-    dataReceived = recvData();
-    if(dataReceived) {
-      ch_constrained[0] = constrain(data.ch1, 0, 255);
-      ch_constrained[1] = constrain(data.ch2, 0, 255);
-      ch_constrained[2] = constrain(data.ch3, 0, 255);
-      ch_constrained[3] = constrain(data.ch4, 0, 255);
-      ch_constrained[4] = constrain(data.ch5, 0, 255);
-      ch_constrained[5] = constrain(data.ch6, 0, 255);
-      ch_constrained[6] = constrain(data.ch7, 0, 255);
-      ch_constrained[7] = constrain(data.ch8, 0, 255);
-    } else {
-      loop_ReadFromSerialLine(currentMillis);
+  #ifdef USE_RF_REMOTE
+  // -------------------  data from RF--------------------------------------------------
+  if (currentMillis - previousMillis >= interval) 
+  {  // start timed event for read and send
+    previousMillis = currentMillis;
+    //Serial.print("@1.1 started");
+    //----------------------------------------recvData-------------------------------------
+    remoteDataReceived = recvData();
+    if(remoteDataReceived == true) {
+      constrain_RfData_0_255();
+      RF_data_changed = RfData_changed();
+      compute_fromRfData_toAngleData();
+    } //end of if(remoteDataReceived)
+    //Serial.println(" @1.2 end");
+  }
+  #endif
+  // -----------  end of RF-data---------------------------------------------------------------
+
+  //------------data from Serial Line-----------------------------------------------------------------
+  #ifdef USE_SERIAL_LINE
+    if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) 
+    {  // start timed event for read and send
+      previousMillis_SerialLine = currentMillis;
+      Serial.print("@2.1 started.");
+
+      //-----------loop_ReadFromSerialLine-------
+      serialDataReceived = loop_ReadFromSerialLine(currentMillis); 
+      if(serialDataReceived == true) {
+        serial_data_changed = serialData_changed();
+        if(serial_data_changed == true) {
+          constrain_allServoAngles_0_255();
+          compute_from_SerialData_toAngleData();
+        } //end of if (mydata_received_changed())
+      } //end of if (serialDataReceived)
+      Serial.println(" @2.2 end.");
     }
+  #endif
+  //------------  end of  Serial Line---------------------------------------------------------------------
 
+  //-------------------Servos  handling-----------------------------------------------------------------
+  if (currentMillis - previousServoMillis >= servoInterval) 
+  {  // start timed event for Servos  (200 ms)
+	  previousServoMillis = currentMillis;
+    //Serial.print("@3.1 started");
+    if((serialDataReceived==true) || (remoteDataReceived == true)) {
+      
+      constrain_allServoAngles_0_255();
 
-    if(all_center_points_initialized == false) {
-      setCenterPoints();
-    } else {
+      convert_allAngle_to_Pwm_Min_Center_Max();
 
-      ch[1] = ch_constrained[0];  //PWM vystup digital pin D1 čierny  //198
-      ch[2] = ch_constrained[1];  //PWM vystup digital pin D2 žltý    //116
-      ch[3] = ch_constrained[2];  //PWM vystup digital pin D3 modrý   //135
-      ch[4] = ch_constrained[3];  //PWM vystup digital pin D4 červeny //115
-      ch[5] = ch_constrained[4];  //PWM vystup digital pin D5 čierny  //197
-      ch[6] = ch_constrained[5];  //PWM vystup digital pin D6 žltý    //113
-      ch[7] = ch_constrained[6];  //PWM vystup digital pin D7 modrý   //128
-      ch[8] = ch_constrained[7];  //PWM vystup digital pin D8 červeny //113
+      sendData_toPwmDriver();
 
-      data_changed = false;
-      for (short i=0; i<=8; i++) {
-        if(abs (prev_ch[i] - ch[i]) > 1 ) {
-          Serial.print("loop: @3 ----This chanel has changed: Chanel: ");
-          Serial.println("ch["+String(i)+"]:"+String(ch[i])+".");
-          data_changed = true;
-        }
-        prev_ch[i] = ch[i];
+      if(RF_data_changed == true || serial_data_changed == true) {
+        show_ChangedData_toDebug();
+
+        show_PwmData_toDebug();
+
+        show_eyeLidsData_PwmAndAngle_toDebug();
+        
       }
-      // Serial.println("@3 Chanels:"+String(ch_1)+"("+String(data.ch1)+", c "+String(ch_1_center)+"), "+String(ch_2)+"("+String(data.ch2)+", c "+String(ch_2_center)+") | "+String(ch_3)+"("+String(data.ch3)+", c "+String(ch_3_center)+"), "+String(ch_4)+"("+String(data.ch4)+", c "+String(ch_4_center)+") || "+String(ch_5)+"("+String(data.ch5)+", c "+String(ch_5_center)+"), "+String(ch_6)+"("+String(data.ch6)+", c "+String(ch_6_center)+") | "+String(ch_7)+"("+String(data.ch7)+", c "+String(ch_7_center)+"), "+String(ch_8)+"("+String(data.ch8)+", c "+String(ch_8_center)+")");
+
+      copyActualPwmData_toPreviousPwmData();
       
-      servo_eyeLeftUD_Angle       = 255 - ch[1];
-      servo_eyeLeftLR_Angle       = ch[2];
-      servo_eyeRightUD_Angle      = ch[1];
-      servo_eyeRightLR_Angle      = ch[2];
+    }
+    //Serial.println(" @3.2 end.");
+  }
+  //------------- end of Servo handling---------------------------------
+  //Serial.println("loop: end of loop");
+}// end of  loop()
+//------------------------------end of  loop()----------------------------------
+//------------------------------end of  loop()----------------------------------
+//------------------------------end of  loop()----------------------------------
 
-      servo_eyelidLeftUpper_Angle = (127 - (eyeToLip_Scale * (ch[1] - 127))) + (ch5ToLip_Scale * (127 - ch[5])) + (ch6ToLip_Scale * (127 - ch[6]));
-      servo_eyelidLeftLower_Angle = (127 - (eyeToLip_Scale * (ch[1] - 127))) - (ch5ToLip_Scale * (127 - ch[5])) + (ch6ToLip_Scale * (127 - ch[6]));
-      servo_eyelidRightUpper_Angle= (eyeToLip_Scale * (ch[1] - 127))  + 127  - (ch5ToLip_Scale * (127 - ch[5])) - (ch6ToLip_Scale * (127 - ch[6]));
-      servo_eyelidRightLower_Angle= (eyeToLip_Scale * (ch[1] - 127))  + 127  + (ch5ToLip_Scale * (127 - ch[5])) - (ch6ToLip_Scale * (127 - ch[6]));
+bool RfData_changed(){
+  bool RF_data_changed = false;
+  for (short i=0; i<=8; i++) {
+    if(abs (prev_ch[i] - ch[i]) > 1 ) {
+      Serial.print("loop: @3 ----DataChanged.@RF This chanel has changed: i="+String(i)+" Chanel: ");
+      Serial.println("ch["+String(i)+"]:"+String(ch[i])+".");
+      RF_data_changed = true;
+    }
+    prev_ch[i] = ch[i];
+  }
+  return RF_data_changed;
+}
+void compute_from_SerialData_toAngleData()
+{
+  servo_eyeLeftUD_Angle        = constrain(mydata_received.s00, 0, 255);
+  servo_eyeLeftLR_Angle        = constrain(mydata_received.s01, 0, 255);
+  servo_eyeRightUD_Angle       = constrain(mydata_received.s02, 0, 255);
+  servo_eyeRightLR_Angle       = constrain(mydata_received.s03, 0, 255);
+  servo_eyelidLeftUpper_Angle  = constrain(mydata_received.s04, 0, 255);
+  servo_eyelidLeftLower_Angle  = constrain(mydata_received.s05, 0, 255);
+  servo_eyelidRightUpper_Angle = constrain(mydata_received.s06, 0, 255);
+  servo_eyelidRightLower_Angle = constrain(mydata_received.s07, 0, 255);
+  servo_eyebrowRight_Angle     = constrain(mydata_received.s08, 0, 255);
+  servo_eyebrowLeft_Angle      = constrain(mydata_received.s09, 0, 255);
+  servo_cheekRight_Angle       = constrain(mydata_received.s10, 0, 255);
+  servo_cheekLeft_Angle        = constrain(mydata_received.s11, 0, 255);
+  servo_upperLip_Angle         = constrain(mydata_received.s12, 0, 255);
+  servo_forheadRight_Angle     = constrain(mydata_received.s13, 0, 255);
+  servo_forheadLeft_Angle      = constrain(mydata_received.s14, 0, 255);
+  servo_Jaw_UpDown_Angle       = constrain(mydata_received.s15, 0, 255);
+}
 
-      servo_eyebrowRight_Angle    = ch[4] + (127 - ch[3]);
-      servo_eyebrowLeft_Angle     = ch[4] - (127 - ch[3]);
-      
-      servo_cheekRight_Angle      = ch[7] + (127 - ch[8]);
-      servo_cheekLeft_Angle       = ch[7] - (127 - ch[8]);
-      
-      servo_upperLip_Angle        = 0;
-      
-      servo_forheadRight_Angle    = ch[6] + (127 - ch[5]);
-      servo_forheadLeft_Angle     = ch[6] - (127 - ch[5]);
-      servo_Jaw_UpDown_Angle      = 0;
+void compute_fromRfData_toAngleData()
+{
+  servo_eyeLeftUD_Angle       = 255 - ch[1];
+  servo_eyeLeftLR_Angle       = ch[2];
+  servo_eyeRightUD_Angle      = ch[1];
+  servo_eyeRightLR_Angle      = ch[2];
+
+  servo_eyelidLeftUpper_Angle = (127 - (eyeToLip_Scale * (ch[1] - 127))) + (ch5ToLip_Scale * (127 - ch[5])) + (ch6ToLip_Scale * (127 - ch[6]));
+  servo_eyelidLeftLower_Angle = (127 - (eyeToLip_Scale * (ch[1] - 127))) - (ch5ToLip_Scale * (127 - ch[5])) + (ch6ToLip_Scale * (127 - ch[6]));
+  servo_eyelidRightUpper_Angle= (eyeToLip_Scale * (ch[1] - 127))  + 127  - (ch5ToLip_Scale * (127 - ch[5])) - (ch6ToLip_Scale * (127 - ch[6]));
+  servo_eyelidRightLower_Angle= (eyeToLip_Scale * (ch[1] - 127))  + 127  + (ch5ToLip_Scale * (127 - ch[5])) - (ch6ToLip_Scale * (127 - ch[6]));
+
+  servo_eyebrowRight_Angle    = ch[4] + (127 - ch[3]);
+  servo_eyebrowLeft_Angle     = ch[4] - (127 - ch[3]);
+  
+  servo_cheekRight_Angle      = ch[7] + (127 - ch[8]);
+  servo_cheekLeft_Angle       = ch[7] - (127 - ch[8]);
+  
+  servo_upperLip_Angle        = 0;
+  
+  servo_forheadRight_Angle    = ch[6] + (127 - ch[5]);
+  servo_forheadLeft_Angle     = ch[6] - (127 - ch[5]);
+  servo_Jaw_UpDown_Angle      = 0;
+}
+
+void constrain_RfData_0_255() {
+  ch[1] = constrain(data.ch1, 0, 255);
+  ch[2] = constrain(data.ch2, 0, 255);
+  ch[3] = constrain(data.ch3, 0, 255);
+  ch[4] = constrain(data.ch4, 0, 255);
+  ch[5] = constrain(data.ch5, 0, 255);
+  ch[6] = constrain(data.ch6, 0, 255);
+  ch[7] = constrain(data.ch7, 0, 255);
+  ch[8] = constrain(data.ch8, 0, 255);
+}
 
 
+void constrain_allServoAngles_0_255() {
+  servo_eyeLeftUD_Angle        = constrain(servo_eyeLeftUD_Angle       , 0, 255);
+  servo_eyeLeftLR_Angle        = constrain(servo_eyeLeftLR_Angle       , 0, 255);
+  servo_eyeRightUD_Angle       = constrain(servo_eyeRightUD_Angle      , 0, 255);
+  servo_eyeRightLR_Angle       = constrain(servo_eyeRightLR_Angle      , 0, 255);
+  servo_eyelidLeftUpper_Angle  = constrain(servo_eyelidLeftUpper_Angle , 0, 255);
+  servo_eyelidLeftLower_Angle  = constrain(servo_eyelidLeftLower_Angle , 0, 255);
+  servo_eyelidRightUpper_Angle = constrain(servo_eyelidRightUpper_Angle, 0, 255);
+  servo_eyelidRightLower_Angle = constrain(servo_eyelidRightLower_Angle, 0, 255);
+  servo_eyebrowRight_Angle     = constrain(servo_eyebrowRight_Angle    , 0, 255);
+  servo_eyebrowLeft_Angle      = constrain(servo_eyebrowLeft_Angle     , 0, 255);
+  servo_cheekRight_Angle       = constrain(servo_cheekRight_Angle      , 0, 255);
+  servo_cheekLeft_Angle        = constrain(servo_cheekLeft_Angle       , 0, 255);
+  servo_upperLip_Angle         = constrain(servo_upperLip_Angle        , 0, 255);
+  servo_forheadRight_Angle     = constrain(servo_forheadRight_Angle    , 0, 255);
+  servo_forheadLeft_Angle      = constrain(servo_forheadLeft_Angle     , 0, 255);
+  servo_Jaw_UpDown_Angle       = constrain(servo_Jaw_UpDown_Angle      , 0, 255);
+}
 
-      servo_eyeLeftUD_Angle        = constrain(servo_eyeLeftUD_Angle       , 0, 255);
-      servo_eyeLeftLR_Angle        = constrain(servo_eyeLeftLR_Angle       , 0, 255);
-      servo_eyeRightUD_Angle       = constrain(servo_eyeRightUD_Angle      , 0, 255);
-      servo_eyeRightLR_Angle       = constrain(servo_eyeRightLR_Angle      , 0, 255);
-      servo_eyelidLeftUpper_Angle  = constrain(servo_eyelidLeftUpper_Angle , 0, 255);
-      servo_eyelidLeftLower_Angle  = constrain(servo_eyelidLeftLower_Angle , 0, 255);
-      servo_eyelidRightUpper_Angle = constrain(servo_eyelidRightUpper_Angle, 0, 255);
-      servo_eyelidRightLower_Angle = constrain(servo_eyelidRightLower_Angle, 0, 255);
-      servo_eyebrowRight_Angle     = constrain(servo_eyebrowRight_Angle    , 0, 255);
-      servo_eyebrowLeft_Angle      = constrain(servo_eyebrowLeft_Angle     , 0, 255);
-      servo_cheekRight_Angle       = constrain(servo_cheekRight_Angle      , 0, 255);
-      servo_cheekLeft_Angle        = constrain(servo_cheekLeft_Angle       , 0, 255);
-      servo_upperLip_Angle         = constrain(servo_upperLip_Angle        , 0, 255);
-      servo_forheadRight_Angle     = constrain(servo_forheadRight_Angle    , 0, 255);
-      servo_forheadLeft_Angle      = constrain(servo_forheadLeft_Angle     , 0, 255);
-      servo_Jaw_UpDown_Angle       = constrain(servo_Jaw_UpDown_Angle      , 0, 255);
-
+void convert_allAngle_to_Pwm_Min_Center_Max(){
       servo_eyeLeftUD_Pwm       = (servo_eyeLeftUD_Angle        < 128 ? map(servo_eyeLeftUD_Angle        , 0, 127, SERVO_MIN_eyeLeftUD,        SERVO_MID_eyeLeftUD )      : map(servo_eyeLeftUD_Angle,        128, 255, SERVO_MID_eyeLeftUD ,       SERVO_MAX_eyeLeftUD ));
       servo_eyeLeftLR_Pwm       = (servo_eyeLeftLR_Angle        < 128 ? map(servo_eyeLeftLR_Angle        , 0, 127, SERVO_MIN_eyeLeftLR,        SERVO_MID_eyeLeftLR )      : map(servo_eyeLeftLR_Angle,        128, 255, SERVO_MID_eyeLeftLR ,       SERVO_MAX_eyeLeftLR ));
       servo_eyeRightUD_Pwm      = (servo_eyeRightUD_Angle       < 128 ? map(servo_eyeRightUD_Angle       , 0, 127, SERVO_MIN_eyeRightUD,       SERVO_MID_eyeRightUD)      : map(servo_eyeRightUD_Angle,       128, 255, SERVO_MID_eyeRightUD,       SERVO_MAX_eyeRightUD));
@@ -283,75 +337,84 @@ void loop()
       servo_forheadRight_Pwm    = (servo_forheadRight_Angle     < 128 ? map(servo_forheadRight_Angle     , 0, 127, SERVO_MIN_forheadRight,     SERVO_MID_forheadRight)    : map(servo_forheadRight_Angle    , 128, 255, SERVO_MID_forheadRight,     SERVO_MAX_forheadRight));
       servo_forheadLeft_Pwm     = (servo_forheadLeft_Angle      < 128 ? map(servo_forheadLeft_Angle      , 0, 127, SERVO_MIN_forheadLeft,      SERVO_MID_forheadLeft)     : map(servo_forheadLeft_Angle     , 128, 255, SERVO_MID_forheadLeft,      SERVO_MAX_forheadLeft));
       servo_Jaw_UpDown_Pwm      = (servo_Jaw_UpDown_Angle       < 128 ? map(servo_Jaw_UpDown_Angle       , 0, 127, SERVO_MIN_Jaw_UpDown,       SERVO_MID_Jaw_UpDown)      : map(servo_Jaw_UpDown_Angle      , 128, 255, SERVO_MID_Jaw_UpDown,       SERVO_MAX_Jaw_UpDown));
+}
 
-      pwm.setPWM( i01_head_eyeLeftUD       , 0, servo_eyeLeftUD_Pwm);
-      pwm.setPWM( i01_head_eyeLeftLR       , 0, servo_eyeLeftLR_Pwm);
-      pwm.setPWM( i01_head_eyeRightUD      , 0, servo_eyeRightUD_Pwm);
-      pwm.setPWM( i01_head_eyeRightLR      , 0, servo_eyeRightLR_Pwm);
-      
-      pwm.setPWM( i01_head_eyelidLeftUpper , 0, servo_eyelidLeftUpper_Pwm);
-      pwm.setPWM( i01_head_eyelidLeftLower , 0, servo_eyelidLeftLower_Pwm);
-      pwm.setPWM( i01_head_eyelidRightUpper, 0, servo_eyelidRightUpper_Pwm);
-      pwm.setPWM( i01_head_eyelidRightLower, 0, servo_eyelidRightLower_Pwm);
-      
-      pwm.setPWM( i01_head_eyebrowRight    , 0, servo_eyebrowRight_Pwm);
-      pwm.setPWM( i01_head_eyebrowLeft     , 0, servo_eyebrowLeft_Pwm);
+void sendData_toPwmDriver() {
+  pwm.setPWM( i01_head_eyeLeftUD       , 0, servo_eyeLeftUD_Pwm);
+  pwm.setPWM( i01_head_eyeLeftLR       , 0, servo_eyeLeftLR_Pwm);
+  pwm.setPWM( i01_head_eyeRightUD      , 0, servo_eyeRightUD_Pwm);
+  pwm.setPWM( i01_head_eyeRightLR      , 0, servo_eyeRightLR_Pwm);
+  
+  pwm.setPWM( i01_head_eyelidLeftUpper , 0, servo_eyelidLeftUpper_Pwm);
+  pwm.setPWM( i01_head_eyelidLeftLower , 0, servo_eyelidLeftLower_Pwm);
+  pwm.setPWM( i01_head_eyelidRightUpper, 0, servo_eyelidRightUpper_Pwm);
+  pwm.setPWM( i01_head_eyelidRightLower, 0, servo_eyelidRightLower_Pwm);
+  
+  pwm.setPWM( i01_head_eyebrowRight    , 0, servo_eyebrowRight_Pwm);
+  pwm.setPWM( i01_head_eyebrowLeft     , 0, servo_eyebrowLeft_Pwm);
 
-      pwm.setPWM( i01_head_cheekRight      , 0, servo_cheekRight_Pwm);
-      pwm.setPWM( i01_head_cheekLeft       , 0, servo_cheekLeft_Pwm);
+  pwm.setPWM( i01_head_cheekRight      , 0, servo_cheekRight_Pwm);
+  pwm.setPWM( i01_head_cheekLeft       , 0, servo_cheekLeft_Pwm);
 
-      pwm.setPWM( i01_head_upperLip        , 0, servo_upperLip_Pwm);
+  pwm.setPWM( i01_head_upperLip        , 0, servo_upperLip_Pwm);
 
-      pwm.setPWM( i01_head_forheadRight    , 0, servo_forheadRight_Pwm);
-      pwm.setPWM( i01_head_forheadLeft     , 0, servo_forheadLeft_Pwm);
+  pwm.setPWM( i01_head_forheadRight    , 0, servo_forheadRight_Pwm);
+  pwm.setPWM( i01_head_forheadLeft     , 0, servo_forheadLeft_Pwm);
 
-      pwm.setPWM( Jaw_UpDown               , 0, servo_Jaw_UpDown_Pwm);
-      
+  pwm.setPWM( Jaw_UpDown               , 0, servo_Jaw_UpDown_Pwm);
+}
 
-      if(data_changed == true) {
-        ////Serial.println("loop: @4 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeLeftUD_Angle = "+String(servo_eyeLeftUD_Angle)+", servo_eyeLeftUD_Pwm = "+String(servo_eyeLeftUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeLeftLR_Angle = "+String(servo_eyeLeftLR_Angle)+", servo_eyeLeftLR_Pwm = "+String(servo_eyeLeftLR_Pwm)+".");
-        //Serial.println("loop @5 data changed.  Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeRightUD_Angle = "+String(servo_eyeRightUD_Angle)+", servo_eyeRightUD_Pwm = "+String(servo_eyeRightUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeRightLR_Angle = "+String(servo_eyeRightLR_Angle)+", servo_eyeRightLR_Pwm = "+String(servo_eyeRightLR_Pwm)+".");
-        Serial.print("loop @5 changed. ");
-        if ((prev_servo_eyeLeftUD_Pwm        != servo_eyeLeftUD_Pwm      ) || (prev_servo_eyeRightUD_Pwm       != servo_eyeRightUD_Pwm      )) 
-          {
-            Serial.print(" ch[1] ="+String(ch[1])+", ");
-          }
-        if ((prev_servo_eyeLeftLR_Pwm        != servo_eyeLeftLR_Pwm      ) || (prev_servo_eyeRightLR_Pwm       != servo_eyeRightLR_Pwm      )) 
-          {
-            Serial.print(" ch[2] ="+String(ch[2])+", ");
-          }
-        if ((prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) || (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) || (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) || (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm))
-          {
-            //Serial.print(" <ch[1], ch[5], ch[6]> = ");
-            //Serial.print("<"+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+">, ");
-          }
+void show_PwmData_toDebug() {
+  bool dataShown = false;
+  if (prev_servo_eyeLeftUD_Pwm        != servo_eyeLeftUD_Pwm       ) {Serial.print("S_eyeLeftUD_Pwm:"+String(servo_eyeLeftUD_Pwm       )+", "); dataShown = true;}
+  if (prev_servo_eyeLeftLR_Pwm        != servo_eyeLeftLR_Pwm       ) {Serial.print("S_eyeLeftLR_Pwm:"+String(servo_eyeLeftLR_Pwm       )+", "); dataShown = true;}
+  if (prev_servo_eyeRightUD_Pwm       != servo_eyeRightUD_Pwm      ) {Serial.print("S_eyeRightUD_Pwm:"+String(servo_eyeRightUD_Pwm      )+", "); dataShown = true;}
+  if (prev_servo_eyeRightLR_Pwm       != servo_eyeRightLR_Pwm      ) {Serial.print("S_eyeRightLR_Pwm:"+String(servo_eyeRightLR_Pwm      )+", "); dataShown = true;}
+  if (prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) {Serial.print("S_eyelidLeftUpper_Pwm:"+String(servo_eyelidLeftUpper_Pwm )+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) {Serial.print("S_eyelidLeftLower_Pwm:"+String(servo_eyelidLeftLower_Pwm )+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) {Serial.print("S_eyelidRightUpper_Pwm:"+String(servo_eyelidRightUpper_Pwm)+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm) {Serial.print("S_eyelidRightLower_Pwm:"+String(servo_eyelidRightLower_Pwm)+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if (prev_servo_eyebrowRight_Pwm     != servo_eyebrowRight_Pwm    ) {Serial.print("S_eyebrowRight_Pwm:"+String(servo_eyebrowRight_Pwm    )+", "); dataShown = true;}
+  if (prev_servo_eyebrowLeft_Pwm      != servo_eyebrowLeft_Pwm     ) {Serial.print("S_eyebrowLeft_Pwm:"+String(servo_eyebrowLeft_Pwm     )+", "); dataShown = true;}
+  if (prev_servo_cheekRight_Pwm       != servo_cheekRight_Pwm      ) {Serial.print("S_cheekRight_Pwm:"+String(servo_cheekRight_Pwm      )+", "); dataShown = true;}
+  if (prev_servo_cheekLeft_Pwm        != servo_cheekLeft_Pwm       ) {Serial.print("S_cheekLeft_Pwm:"+String(servo_cheekLeft_Pwm       )+", "); dataShown = true;}
+  if (prev_servo_upperLip_Pwm         != servo_upperLip_Pwm        ) {Serial.print("S_upperLip_Pwm:"+String(servo_upperLip_Pwm        )+", "); dataShown = true;}
+  if (prev_servo_forheadRight_Pwm     != servo_forheadRight_Pwm    ) {Serial.print("S_forheadRight_Pwm:"+String(servo_forheadRight_Pwm    )+", "); dataShown = true;}
+  if (prev_servo_forheadLeft_Pwm      != servo_forheadLeft_Pwm     ) {Serial.print("S_forheadLeft_Pwm:"+String(servo_forheadLeft_Pwm     )+", "); dataShown = true;}
+  if (prev_servo_Jaw_UpDown_Pwm       != servo_Jaw_UpDown_Pwm      ) {Serial.print("S_Jaw_UpDown_Pwm:"+String(servo_Jaw_UpDown_Pwm      )+", "); dataShown = true;}
+  if( dataShown == true){Serial.println(".");}
+}
 
-        if (prev_servo_eyeLeftUD_Pwm        != servo_eyeLeftUD_Pwm       ) {Serial.print("S_eyeLeftUD_Pwm:"+String(servo_eyeLeftUD_Pwm       )+", ");}
-        if (prev_servo_eyeLeftLR_Pwm        != servo_eyeLeftLR_Pwm       ) {Serial.print("S_eyeLeftLR_Pwm:"+String(servo_eyeLeftLR_Pwm       )+", ");}
-        if (prev_servo_eyeRightUD_Pwm       != servo_eyeRightUD_Pwm      ) {Serial.print("S_eyeRightUD_Pwm:"+String(servo_eyeRightUD_Pwm      )+", ");}
-        if (prev_servo_eyeRightLR_Pwm       != servo_eyeRightLR_Pwm      ) {Serial.print("S_eyeRightLR_Pwm:"+String(servo_eyeRightLR_Pwm      )+", ");}
-        if (prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) {Serial.print("S_eyelidLeftUpper_Pwm:"+String(servo_eyelidLeftUpper_Pwm )+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        if (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) {Serial.print("S_eyelidLeftLower_Pwm:"+String(servo_eyelidLeftLower_Pwm )+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        if (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) {Serial.print("S_eyelidRightUpper_Pwm:"+String(servo_eyelidRightUpper_Pwm)+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        if (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm) {Serial.print("S_eyelidRightLower_Pwm:"+String(servo_eyelidRightLower_Pwm)+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        if (prev_servo_eyebrowRight_Pwm     != servo_eyebrowRight_Pwm    ) {Serial.print("S_eyebrowRight_Pwm:"+String(servo_eyebrowRight_Pwm    )+", ");}
-        if (prev_servo_eyebrowLeft_Pwm      != servo_eyebrowLeft_Pwm     ) {Serial.print("S_eyebrowLeft_Pwm:"+String(servo_eyebrowLeft_Pwm     )+", ");}
-        if (prev_servo_cheekRight_Pwm       != servo_cheekRight_Pwm      ) {Serial.print("S_cheekRight_Pwm:"+String(servo_cheekRight_Pwm      )+", ");}
-        if (prev_servo_cheekLeft_Pwm        != servo_cheekLeft_Pwm       ) {Serial.print("S_cheekLeft_Pwm:"+String(servo_cheekLeft_Pwm       )+", ");}
-        if (prev_servo_upperLip_Pwm         != servo_upperLip_Pwm        ) {Serial.print("S_upperLip_Pwm:"+String(servo_upperLip_Pwm        )+", ");}
-        if (prev_servo_forheadRight_Pwm     != servo_forheadRight_Pwm    ) {Serial.print("S_forheadRight_Pwm:"+String(servo_forheadRight_Pwm    )+", ");}
-        if (prev_servo_forheadLeft_Pwm      != servo_forheadLeft_Pwm     ) {Serial.print("S_forheadLeft_Pwm:"+String(servo_forheadLeft_Pwm     )+", ");}
-        if (prev_servo_Jaw_UpDown_Pwm       != servo_Jaw_UpDown_Pwm      ) {Serial.print("S_Jaw_UpDown_Pwm:"+String(servo_Jaw_UpDown_Pwm      )+", ");}
-        Serial.println(".");
+void show_eyeLidsData_PwmAndAngle_toDebug() {
+  bool dataShown = false;
+  if (prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) {Serial.print("servo_eyelidLeftUpper_Angle:"+String(servo_eyelidLeftUpper_Angle )+", ") ; dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) {Serial.print("servo_eyelidLeftLower_Angle:"+String(servo_eyelidLeftLower_Angle )+", ") ; dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) {Serial.print("servo_eyelidRightUpper_Angle:"+String(servo_eyelidRightUpper_Angle)+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm) {Serial.print("servo_eyelidRightLower_Angle:"+String(servo_eyelidRightLower_Angle)+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
+  if( dataShown == true){Serial.println(".");}
+}
 
-        if (prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) {Serial.print("servo_eyelidLeftUpper_Angle:"+String(servo_eyelidLeftUpper_Angle )+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        if (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) {Serial.print("servo_eyelidLeftLower_Angle:"+String(servo_eyelidLeftLower_Angle )+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        if (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) {Serial.print("servo_eyelidRightUpper_Angle:"+String(servo_eyelidRightUpper_Angle)+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        if (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm) {Serial.print("servo_eyelidRightLower_Angle:"+String(servo_eyelidRightLower_Angle)+", ");} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-        Serial.println(".");
+void show_ChangedData_toDebug()
+{
+  ////Serial.println("loop: @6 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeLeftUD_Angle = "+String(servo_eyeLeftUD_Angle)+", servo_eyeLeftUD_Pwm = "+String(servo_eyeLeftUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeLeftLR_Angle = "+String(servo_eyeLeftLR_Angle)+", servo_eyeLeftLR_Pwm = "+String(servo_eyeLeftLR_Pwm)+".");
+  //Serial.println("loop @7 data changed.  Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeRightUD_Angle = "+String(servo_eyeRightUD_Angle)+", servo_eyeRightUD_Pwm = "+String(servo_eyeRightUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeRightLR_Angle = "+String(servo_eyeRightLR_Angle)+", servo_eyeRightLR_Pwm = "+String(servo_eyeRightLR_Pwm)+".");
+  Serial.print("loop @8 changed. ");
+  if ((prev_servo_eyeLeftUD_Pwm        != servo_eyeLeftUD_Pwm      ) || (prev_servo_eyeRightUD_Pwm       != servo_eyeRightUD_Pwm      )) 
+    {
+      Serial.print(" ch[1] ="+String(ch[1])+", ");
+    }
+  if ((prev_servo_eyeLeftLR_Pwm        != servo_eyeLeftLR_Pwm      ) || (prev_servo_eyeRightLR_Pwm       != servo_eyeRightLR_Pwm      )) 
+    {
+      Serial.print(" ch[2] ="+String(ch[2])+", ");
+    }
+  if ((prev_servo_eyelidLeftUpper_Pwm  != servo_eyelidLeftUpper_Pwm ) || (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) || (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) || (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm))
+    {
+      //Serial.print(" <ch[1], ch[5], ch[6]> = ");
+      //Serial.print("<"+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+">, ");
+    }
+}
 
-      }
-
+void copyActualPwmData_toPreviousPwmData() {
       prev_servo_eyeLeftUD_Pwm        = servo_eyeLeftUD_Pwm       ;
       prev_servo_eyeLeftLR_Pwm        = servo_eyeLeftLR_Pwm       ;
       prev_servo_eyeRightUD_Pwm       = servo_eyeRightUD_Pwm      ;
@@ -369,13 +432,54 @@ void loop()
       prev_servo_forheadLeft_Pwm      = servo_forheadLeft_Pwm     ;
       prev_servo_Jaw_UpDown_Pwm       = servo_Jaw_UpDown_Pwm      ;
 
-    }
-  }
 }
 
-void loop_ReadFromSerialLine(unsigned long currentMillis) {
-  if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) {  // start timed event for read and send
-    previousMillis_SerialLine = currentMillis;
+bool serialData_changed() {
+  bool data_changed = false;
+  if(
+       (mydata_received.s00 != prev_mydata.s00)
+    || (mydata_received.s01 != prev_mydata.s01)
+    || (mydata_received.s02 != prev_mydata.s02)
+    || (mydata_received.s03 != prev_mydata.s03)
+    || (mydata_received.s04 != prev_mydata.s04)
+    || (mydata_received.s05 != prev_mydata.s05)
+    || (mydata_received.s06 != prev_mydata.s06)
+    || (mydata_received.s07 != prev_mydata.s07)
+    || (mydata_received.s08 != prev_mydata.s08)
+    || (mydata_received.s09 != prev_mydata.s09)
+    || (mydata_received.s10 != prev_mydata.s10)
+    || (mydata_received.s11 != prev_mydata.s11)
+    || (mydata_received.s12 != prev_mydata.s12)
+    || (mydata_received.s13 != prev_mydata.s13)
+    || (mydata_received.s14 != prev_mydata.s14)
+    || (mydata_received.s15 != prev_mydata.s15)) 
+    {
+      data_changed = true; 
+      Serial.print("mydata_received_changed ----DataChanged @SerialLine ");
+      prev_mydata.s00 = mydata_received.s00; 
+      prev_mydata.s01 = mydata_received.s01; 
+      prev_mydata.s02 = mydata_received.s02; 
+      prev_mydata.s03 = mydata_received.s03; 
+      prev_mydata.s04 = mydata_received.s04; 
+      prev_mydata.s05 = mydata_received.s05; 
+      prev_mydata.s06 = mydata_received.s06; 
+      prev_mydata.s07 = mydata_received.s07; 
+      prev_mydata.s08 = mydata_received.s08; 
+      prev_mydata.s09 = mydata_received.s09; 
+      prev_mydata.s10 = mydata_received.s10; 
+      prev_mydata.s11 = mydata_received.s11; 
+      prev_mydata.s12 = mydata_received.s12; 
+      prev_mydata.s13 = mydata_received.s13; 
+      prev_mydata.s14 = mydata_received.s14; 
+      prev_mydata.s15 = mydata_received.s15; 
+    }
+  return data_changed;
+}
+
+bool loop_ReadFromSerialLine(unsigned long currentMillis) {
+  bool serialDataReceived = false;
+  //if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) {  // start timed event for read and send
+    //previousMillis_SerialLine = currentMillis;
 
     if(serialLine.receiveData()){ //ET2.receiveData())            // main data receive
       previousSafetyMillis = currentMillis; 
@@ -384,15 +488,17 @@ void loop_ReadFromSerialLine(unsigned long currentMillis) {
       //ToDo here
       Serial.println("loop_ReadFromSerialLine:mydata_received = 0:" + String(mydata_received.s00) +", 1:" + String(mydata_received.s01) +", 2:" + String(mydata_received.s02) +", 3:" + String(mydata_received.s03));
       count = count + 1;                                              // update count for remote monitoring
+      serialDataReceived = true;
     } else if(currentMillis - previousSafetyMillis > 200) {         // safeties
       noDataCount = noDataCount + 1;                                  // update count for remote monitoring
       Serial.println("!"+String(noDataCount)+"! No Data ");
     }
-  }  // end of timed event Receive/Send
+  //}  // end of timed event Receive/Send
 
-  if (currentMillis - previousServoMillis >= servoInterval) {  // start timed event for Servos  (200 ms)
-	previousServoMillis = currentMillis;
-	//ToDo here
-  }
+  //if (currentMillis - previousServoMillis >= servoInterval) {  // start timed event for Servos  (200 ms)
+	//previousServoMillis = currentMillis;
+	////ToDo here
+  //}
+  return serialDataReceived;
 	  
 }
