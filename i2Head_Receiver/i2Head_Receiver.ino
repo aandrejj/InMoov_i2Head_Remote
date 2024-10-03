@@ -28,12 +28,12 @@
   #define BTBaud 38400 // There is only one speed for configuring HC-05, and that is 38400.
 #else
   #define Baud 9600    // Serial monitor
-  #define BTBaud 9600  // HM-10, HM-19 etc
+  #define BTBaud 4800  // HM-10, HM-19 etc
 #endif
 
 int16_t mode;
 int count;
-int noDataCount;
+int noDataCount = 0;
 
 
 //Servo PWM2;
@@ -82,6 +82,7 @@ void resetData()
 {
 //Definujeme iniciálnu hodnotu každého vstupu údajov
 // potenciometre budú v strednej pozícii, takže 127 je v centre od 254
+/*
   data.ch1 = 127;
   data.ch2 = 127;
   data.ch3 = 127;
@@ -90,48 +91,65 @@ void resetData()
   data.ch6 = 127;
   data.ch7 = 127;
   data.ch8 = 127;
-
+*/
+  mydata_received.s00 = 127;
+  mydata_received.s01 = 127;
+  mydata_received.s02 = 127;
+  mydata_received.s03 = 127;
+  mydata_received.s04 = 127;
+  mydata_received.s05 = 127;
+  mydata_received.s06 = 127;
+  mydata_received.s07 = 127;
+  mydata_received.s08 = 127;
+  mydata_received.s09 = 127;
+  mydata_received.s10 = 127;
+  mydata_received.s11 = 127;
+  mydata_received.s12 = 127;
+  mydata_received.s13 = 127;
+  mydata_received.s14 = 127;
+  mydata_received.s15 = 127;
 }
 
 void setup()
 {
-  Serial.begin(19200);
+  Serial.begin(9600);
   while (!Serial) {
     ;  // wait for serial port to connect. Needed for native USB port only
   }
-  Serial.println();
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
-
-  Serial.println("setup:: Servo Initialization started");
-	delay(200);
+	
+  Serial.println("setup:: @1 Servo Initialization started");
   pwm.begin(); //pwm.begin(0);   0 = driver_ID
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
-	Serial.println("setup: Servos on PCA9685  attached");
+	Serial.println("setup: @2 Servos on PCA9685  attached");
   //all_center_points_initialized = false;
-  delay(20);
+  delay(200);
   
   //konfiguracia NRF24 
   resetData();
   //all_center_points_initialized = true;
   #ifdef USE_RF_REMOTE
+  	Serial.println("setup: @3 radio.begin()..");
     radio.begin();
     radio.setAutoAck(false);
     radio.setDataRate(RF24_250KBPS);  
     radio.openReadingPipe(1,pipeIn);
     //začneme s rádiokomunikáciou
     radio.startListening();
-    Serial.println("setup: rf-radio started");
+    Serial.println("setup: @4 rf-radio started");
   #endif
 
   #ifdef USE_SERIAL_LINE
+    Serial.println("setup: @5 serialOutputLine.begin()");
     serialOutputLine.begin(BTBaud);
-
+    Serial.println("setup: @6 serialLine.begin()");
     serialLine.begin(details(mydata_received), &serialOutputLine);
-    Serial.println("setup: serialLine started");
+    Serial.println("setup: @7 serialLine started");
   #endif
+  delay(500);
 
-  Serial.println("setup:done. setup END.");
+  Serial.println("setup: @8 done. setup END.");
 }
 
 unsigned long lastRecvTime = 0;
@@ -139,7 +157,8 @@ bool recvData()
 {
   bool dataReceived = false;
   while ( radio.available() ) {
-    radio.read(&data, sizeof(MyData));
+    //radio.read(&data, sizeof(MyData));
+    radio.read(&mydata_received, sizeof(RX_DATA_STRUCTURE));
     lastRecvTime = millis(); //tu dostávame údaje
     dataReceived = true;
   }
@@ -182,18 +201,20 @@ void loop()
     if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) 
     {  // start timed event for read and send
       previousMillis_SerialLine = currentMillis;
-      Serial.print("@2.1 started.");
+      //Serial.println("@2.1 started.");
 
       //-----------loop_ReadFromSerialLine-------
       serialDataReceived = loop_ReadFromSerialLine(currentMillis); 
+      //Serial.println("@2.2 started.");
       if(serialDataReceived == true) {
         serial_data_changed = serialData_changed();
         if(serial_data_changed == true) {
-          constrain_allServoAngles_0_255();
           compute_from_SerialData_toAngleData();
+          //Serial.println("@2.50 started.");
+          constrain_allServoAngles_0_255();
         } //end of if (mydata_received_changed())
       } //end of if (serialDataReceived)
-      Serial.println(" @2.2 end.");
+      //Serial.println(" @2.99 end.");
     }
   #endif
   //------------  end of  Serial Line---------------------------------------------------------------------
@@ -214,7 +235,7 @@ void loop()
       if(RF_data_changed == true || serial_data_changed == true) {
         show_ChangedData_toDebug();
 
-        show_PwmData_toDebug();
+        //show_PwmData_toDebug();
 
         show_eyeLidsData_PwmAndAngle_toDebug();
         
@@ -262,6 +283,9 @@ void compute_from_SerialData_toAngleData()
   servo_forheadRight_Angle     = constrain(mydata_received.s13, 0, 255);
   servo_forheadLeft_Angle      = constrain(mydata_received.s14, 0, 255);
   servo_Jaw_UpDown_Angle       = constrain(mydata_received.s15, 0, 255);
+
+  Serial.println("s00 = "+ String(mydata_received.s00));
+
 }
 
 void compute_fromRfData_toAngleData()
@@ -391,7 +415,7 @@ void show_eyeLidsData_PwmAndAngle_toDebug() {
   if (prev_servo_eyelidLeftLower_Pwm  != servo_eyelidLeftLower_Pwm ) {Serial.print("servo_eyelidLeftLower_Angle:"+String(servo_eyelidLeftLower_Angle )+", ") ; dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
   if (prev_servo_eyelidRightUpper_Pwm != servo_eyelidRightUpper_Pwm) {Serial.print("servo_eyelidRightUpper_Angle:"+String(servo_eyelidRightUpper_Angle)+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
   if (prev_servo_eyelidRightLower_Pwm != servo_eyelidRightLower_Pwm) {Serial.print("servo_eyelidRightLower_Angle:"+String(servo_eyelidRightLower_Angle)+", "); dataShown = true;} // +": (ch[1], ch[5], ch[6]) =("+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+"), ");}
-  if( dataShown == true){Serial.println(".");}
+  if( dataShown == true){Serial.println(",");}
 }
 
 void show_ChangedData_toDebug()
@@ -399,9 +423,11 @@ void show_ChangedData_toDebug()
   ////Serial.println("loop: @6 Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeLeftUD_Angle = "+String(servo_eyeLeftUD_Angle)+", servo_eyeLeftUD_Pwm = "+String(servo_eyeLeftUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeLeftLR_Angle = "+String(servo_eyeLeftLR_Angle)+", servo_eyeLeftLR_Pwm = "+String(servo_eyeLeftLR_Pwm)+".");
   //Serial.println("loop @7 data changed.  Chanels:data.ch1 = "+String(data.ch1)+", ch_1 = "+String(ch_1)+", servo_eyeRightUD_Angle = "+String(servo_eyeRightUD_Angle)+", servo_eyeRightUD_Pwm = "+String(servo_eyeRightUD_Pwm)+", || data.ch2 = "+String(data.ch2)+", ch_2 = "+String(ch_2)+", servo_eyeRightLR_Angle = "+String(servo_eyeRightLR_Angle)+", servo_eyeRightLR_Pwm = "+String(servo_eyeRightLR_Pwm)+".");
   Serial.print("loop @8 changed. ");
+  #ifdef USE_RF_REMOTE
   if ((prev_servo_eyeLeftUD_Pwm        != servo_eyeLeftUD_Pwm      ) || (prev_servo_eyeRightUD_Pwm       != servo_eyeRightUD_Pwm      )) 
     {
-      Serial.print(" ch[1] ="+String(ch[1])+", ");
+        Serial.print(" ch[1] ="+String(ch[1])+", ");
+
     }
   if ((prev_servo_eyeLeftLR_Pwm        != servo_eyeLeftLR_Pwm      ) || (prev_servo_eyeRightLR_Pwm       != servo_eyeRightLR_Pwm      )) 
     {
@@ -412,6 +438,10 @@ void show_ChangedData_toDebug()
       //Serial.print(" <ch[1], ch[5], ch[6]> = ");
       //Serial.print("<"+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+">, ");
     }
+  #endif
+  #ifdef USE_SERIAL_LINE
+    //Serial.print(" mydata_received.s00 = "+ String(mydata_received.s00));
+  #endif
 }
 
 void copyActualPwmData_toPreviousPwmData() {
@@ -436,26 +466,24 @@ void copyActualPwmData_toPreviousPwmData() {
 
 bool serialData_changed() {
   bool data_changed = false;
-  if(
-       (mydata_received.s00 != prev_mydata.s00)
-    || (mydata_received.s01 != prev_mydata.s01)
-    || (mydata_received.s02 != prev_mydata.s02)
-    || (mydata_received.s03 != prev_mydata.s03)
-    || (mydata_received.s04 != prev_mydata.s04)
-    || (mydata_received.s05 != prev_mydata.s05)
-    || (mydata_received.s06 != prev_mydata.s06)
-    || (mydata_received.s07 != prev_mydata.s07)
-    || (mydata_received.s08 != prev_mydata.s08)
-    || (mydata_received.s09 != prev_mydata.s09)
-    || (mydata_received.s10 != prev_mydata.s10)
-    || (mydata_received.s11 != prev_mydata.s11)
-    || (mydata_received.s12 != prev_mydata.s12)
-    || (mydata_received.s13 != prev_mydata.s13)
-    || (mydata_received.s14 != prev_mydata.s14)
-    || (mydata_received.s15 != prev_mydata.s15)) 
-    {
-      data_changed = true; 
-      Serial.print("mydata_received_changed ----DataChanged @SerialLine ");
+  if(mydata_received.s00 != prev_mydata.s00){data_changed = true; Serial.print("s00 = "+ String(mydata_received.s00)+" ");}
+  if(mydata_received.s01 != prev_mydata.s01){data_changed = true; Serial.print("s01 = "+ String(mydata_received.s01)+" ");}
+  if(mydata_received.s02 != prev_mydata.s02){data_changed = true; Serial.print("s02 = "+ String(mydata_received.s02)+" ");}
+  if(mydata_received.s03 != prev_mydata.s03){data_changed = true; Serial.print("s03 = "+ String(mydata_received.s03)+" ");}
+  if(mydata_received.s04 != prev_mydata.s04){data_changed = true; Serial.print("s04 = "+ String(mydata_received.s04)+" ");}
+  if(mydata_received.s05 != prev_mydata.s05){data_changed = true; Serial.print("s05 = "+ String(mydata_received.s05)+" ");}
+  if(mydata_received.s06 != prev_mydata.s06){data_changed = true; Serial.print("s06 = "+ String(mydata_received.s06)+" ");}
+  if(mydata_received.s07 != prev_mydata.s07){data_changed = true; Serial.print("s07 = "+ String(mydata_received.s07)+" ");}
+  if(mydata_received.s08 != prev_mydata.s08){data_changed = true; Serial.print("s08 = "+ String(mydata_received.s08)+" ");}
+  if(mydata_received.s09 != prev_mydata.s09){data_changed = true; Serial.print("s09 = "+ String(mydata_received.s09)+" ");}
+  if(mydata_received.s10 != prev_mydata.s10){data_changed = true; Serial.print("s10 = "+ String(mydata_received.s10)+" ");}
+  if(mydata_received.s11 != prev_mydata.s11){data_changed = true; Serial.print("s11 = "+ String(mydata_received.s11)+" ");}
+  if(mydata_received.s12 != prev_mydata.s12){data_changed = true; Serial.print("s12 = "+ String(mydata_received.s12)+" ");}
+  if(mydata_received.s13 != prev_mydata.s13){data_changed = true; Serial.print("s13 = "+ String(mydata_received.s13)+" ");}
+  if(mydata_received.s14 != prev_mydata.s14){data_changed = true; Serial.print("s14 = "+ String(mydata_received.s14)+" ");}
+  if(mydata_received.s15 != prev_mydata.s15){data_changed = true; Serial.print("s15 = "+ String(mydata_received.s15)+" ");}
+  if(data_changed == true){
+      Serial.println(" mydata_received_changed ----DataChanged @SerialLine ");
       prev_mydata.s00 = mydata_received.s00; 
       prev_mydata.s01 = mydata_received.s01; 
       prev_mydata.s02 = mydata_received.s02; 
@@ -480,8 +508,9 @@ bool loop_ReadFromSerialLine(unsigned long currentMillis) {
   bool serialDataReceived = false;
   //if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) {  // start timed event for read and send
     //previousMillis_SerialLine = currentMillis;
-
+//Serial.println("@2.3 ReadFromSerialLine");
     if(serialLine.receiveData()){ //ET2.receiveData())            // main data receive
+      //Serial.println("@2.4 ReadFromSerialLine");
       previousSafetyMillis = currentMillis; 
       //mydata_send.mode = mode;
       //mydata_send.count = count;
@@ -490,8 +519,10 @@ bool loop_ReadFromSerialLine(unsigned long currentMillis) {
       count = count + 1;                                              // update count for remote monitoring
       serialDataReceived = true;
     } else if(currentMillis - previousSafetyMillis > 200) {         // safeties
+      //Serial.println("@2.5 ReadFromSerialLine");
       noDataCount = noDataCount + 1;                                  // update count for remote monitoring
-      Serial.println("!"+String(noDataCount)+"! No Data ");
+      //Serial.println("!"+String(noDataCount))+"! No Data ");
+      Serial.println("! No Serial Data!");
     }
   //}  // end of timed event Receive/Send
 
