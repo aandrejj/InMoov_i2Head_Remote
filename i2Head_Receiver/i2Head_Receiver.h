@@ -116,3 +116,20 @@ int prev_servo_forheadRight_Pwm    ;
 int prev_servo_forheadLeft_Pwm     ;
 int prev_servo_Jaw_UpDown_Pwm      ;
 
+
+bool s00_changed = false;
+bool s01_changed = false;
+bool s02_changed = false;
+bool s03_changed = false;
+bool s04_changed = false;
+bool s05_changed = false;
+bool s06_changed = false;
+bool s07_changed = false;
+bool s08_changed = false;
+bool s09_changed = false;
+bool s10_changed = false;
+bool s11_changed = false;
+bool s12_changed = false;
+bool s13_changed = false;
+bool s14_changed = false;
+bool s15_changed = false;

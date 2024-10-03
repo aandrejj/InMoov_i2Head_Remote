@@ -36,22 +36,6 @@ int count;
 int noDataCount = 0;
 
 
-//Servo PWM2;
-//Servo PWM3;
-//Servo PWM4;
-//Servo PWM5;
-//Méžeme mať až 32 kanalov
-struct MyData {
-  byte ch1;
-  byte ch2;
-  byte ch3;
-  byte ch4;
-  byte ch5;
-  byte ch6;
-  byte ch7;
-  byte ch8;
-};
-MyData data;
 const uint64_t pipeIn = 0x0022;   //Tento isty kod musi mať aj primač
 RF24 radio(10,9);  //zapojenie CE a CSN pinov
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
@@ -187,6 +171,7 @@ void loop()
     //----------------------------------------recvData-------------------------------------
     remoteDataReceived = recvData();
     if(remoteDataReceived == true) {
+      //Serial.println("@1.2 remoteDataReceived = "+String(remoteDataReceived));
       if (mydata_received.mode == 0) // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 3 = ?
       {
         constrain_RfData_0_255();
@@ -198,8 +183,9 @@ void loop()
           serial_data_changed = serialData_changed();
           if(serial_data_changed == true) {
             compute_from_SerialData_toAngleData();
-            //Serial.println("@2.50 started.");
+            //Serial.println("@1.40 started.");
             constrain_allServoAngles_0_255();
+            reset_SerialDataChanged();
           }
       }
     } //end of if(remoteDataReceived)
@@ -224,6 +210,7 @@ void loop()
           compute_from_SerialData_toAngleData();
           //Serial.println("@2.50 started.");
           constrain_allServoAngles_0_255();
+          reset_SerialDataChanged();
         } //end of if (mydata_received_changed())
       } //end of if (serialDataReceived)
       //Serial.println(" @2.99 end.");
@@ -232,24 +219,25 @@ void loop()
   //------------  end of  Serial Line---------------------------------------------------------------------
 
   //-------------------Servos  handling-----------------------------------------------------------------
-  if (currentMillis - previousServoMillis >= servoInterval) 
-  {  // start timed event for Servos  (200 ms)
-	  previousServoMillis = currentMillis;
-    //Serial.print("@3.1 started");
+  //if (currentMillis - previousServoMillis >= servoInterval) 
+  //{  // start timed event for Servos  (200 ms)
+	  //previousServoMillis = currentMillis;
+    //Serial.println("@3.1 started serialDataReceived = "+String(serialDataReceived)+", remoteDataReceived = "+String(remoteDataReceived));
     if((serialDataReceived==true) || (remoteDataReceived == true)) {
-      
+      //Serial.println("@3.2 DataReceived changed");
       constrain_allServoAngles_0_255();
 
       convert_allAngle_to_Pwm_Min_Center_Max();
 
       sendData_toPwmDriver();
+      //Serial.println("@3.3 sendData_toPwmDriver");
 
       if(RF_data_changed == true || serial_data_changed == true) {
-        show_ChangedData_toDebug();
+        //show_ChangedData_toDebug();
 
-        //show_PwmData_toDebug();
+        show_PwmData_toDebug();
 
-        show_eyeLidsData_PwmAndAngle_toDebug();
+        //show_eyeLidsData_PwmAndAngle_toDebug();
         
       }
 
@@ -257,7 +245,7 @@ void loop()
       
     }
     //Serial.println(" @3.2 end.");
-  }
+  //}
   //------------- end of Servo handling---------------------------------
   //Serial.println("loop: end of loop");
 }// end of  loop()
@@ -401,6 +389,7 @@ void sendData_toPwmDriver() {
   pwm.setPWM( i01_head_forheadLeft     , 0, servo_forheadLeft_Pwm);
 
   pwm.setPWM( Jaw_UpDown               , 0, servo_Jaw_UpDown_Pwm);
+  
 }
 
 void show_PwmData_toDebug() {
@@ -481,42 +470,63 @@ void copyActualPwmData_toPreviousPwmData() {
 
 bool serialData_changed() {
   bool data_changed = false;
-  if(mydata_received.s00 != prev_mydata.s00){data_changed = true; Serial.print("s00 = "+ String(mydata_received.s00)+" ");}
-  if(mydata_received.s01 != prev_mydata.s01){data_changed = true; Serial.print("s01 = "+ String(mydata_received.s01)+" ");}
-  if(mydata_received.s02 != prev_mydata.s02){data_changed = true; Serial.print("s02 = "+ String(mydata_received.s02)+" ");}
-  if(mydata_received.s03 != prev_mydata.s03){data_changed = true; Serial.print("s03 = "+ String(mydata_received.s03)+" ");}
-  if(mydata_received.s04 != prev_mydata.s04){data_changed = true; Serial.print("s04 = "+ String(mydata_received.s04)+" ");}
-  if(mydata_received.s05 != prev_mydata.s05){data_changed = true; Serial.print("s05 = "+ String(mydata_received.s05)+" ");}
-  if(mydata_received.s06 != prev_mydata.s06){data_changed = true; Serial.print("s06 = "+ String(mydata_received.s06)+" ");}
-  if(mydata_received.s07 != prev_mydata.s07){data_changed = true; Serial.print("s07 = "+ String(mydata_received.s07)+" ");}
-  if(mydata_received.s08 != prev_mydata.s08){data_changed = true; Serial.print("s08 = "+ String(mydata_received.s08)+" ");}
-  if(mydata_received.s09 != prev_mydata.s09){data_changed = true; Serial.print("s09 = "+ String(mydata_received.s09)+" ");}
-  if(mydata_received.s10 != prev_mydata.s10){data_changed = true; Serial.print("s10 = "+ String(mydata_received.s10)+" ");}
-  if(mydata_received.s11 != prev_mydata.s11){data_changed = true; Serial.print("s11 = "+ String(mydata_received.s11)+" ");}
-  if(mydata_received.s12 != prev_mydata.s12){data_changed = true; Serial.print("s12 = "+ String(mydata_received.s12)+" ");}
-  if(mydata_received.s13 != prev_mydata.s13){data_changed = true; Serial.print("s13 = "+ String(mydata_received.s13)+" ");}
-  if(mydata_received.s14 != prev_mydata.s14){data_changed = true; Serial.print("s14 = "+ String(mydata_received.s14)+" ");}
-  if(mydata_received.s15 != prev_mydata.s15){data_changed = true; Serial.print("s15 = "+ String(mydata_received.s15)+" ");}
+  if(mydata_received.s00 != prev_mydata.s00){data_changed = true; s00_changed = true; Serial.print("s00 = "+ String(mydata_received.s00)+" ");}
+  if(mydata_received.s01 != prev_mydata.s01){data_changed = true; s01_changed = true; Serial.print("s01 = "+ String(mydata_received.s01)+" ");}
+  if(mydata_received.s02 != prev_mydata.s02){data_changed = true; s02_changed = true; Serial.print("s02 = "+ String(mydata_received.s02)+" ");}
+  if(mydata_received.s03 != prev_mydata.s03){data_changed = true; s03_changed = true; Serial.print("s03 = "+ String(mydata_received.s03)+" ");}
+  if(mydata_received.s04 != prev_mydata.s04){data_changed = true; s04_changed = true; Serial.print("s04 = "+ String(mydata_received.s04)+" ");}
+  if(mydata_received.s05 != prev_mydata.s05){data_changed = true; s05_changed = true; Serial.print("s05 = "+ String(mydata_received.s05)+" ");}
+  if(mydata_received.s06 != prev_mydata.s06){data_changed = true; s06_changed = true; Serial.print("s06 = "+ String(mydata_received.s06)+" ");}
+  if(mydata_received.s07 != prev_mydata.s07){data_changed = true; s07_changed = true; Serial.print("s07 = "+ String(mydata_received.s07)+" ");}
+  if(mydata_received.s08 != prev_mydata.s08){data_changed = true; s08_changed = true; Serial.print("s08 = "+ String(mydata_received.s08)+" ");}
+  if(mydata_received.s09 != prev_mydata.s09){data_changed = true; s09_changed = true; Serial.print("s09 = "+ String(mydata_received.s09)+" ");}
+  if(mydata_received.s10 != prev_mydata.s10){data_changed = true; s10_changed = true; Serial.print("s10 = "+ String(mydata_received.s10)+" ");}
+  if(mydata_received.s11 != prev_mydata.s11){data_changed = true; s11_changed = true; Serial.print("s11 = "+ String(mydata_received.s11)+" ");}
+  if(mydata_received.s12 != prev_mydata.s12){data_changed = true; s12_changed = true; Serial.print("s12 = "+ String(mydata_received.s12)+" ");}
+  if(mydata_received.s13 != prev_mydata.s13){data_changed = true; s13_changed = true; Serial.print("s13 = "+ String(mydata_received.s13)+" ");}
+  if(mydata_received.s14 != prev_mydata.s14){data_changed = true; s14_changed = true; Serial.print("s14 = "+ String(mydata_received.s14)+" ");}
+  if(mydata_received.s15 != prev_mydata.s15){data_changed = true; s15_changed = true; Serial.print("s15 = "+ String(mydata_received.s15)+" ");}
   if(data_changed == true){
-      Serial.println(" mydata_received_changed ----");
-      prev_mydata.s00 = mydata_received.s00; 
-      prev_mydata.s01 = mydata_received.s01; 
-      prev_mydata.s02 = mydata_received.s02; 
-      prev_mydata.s03 = mydata_received.s03; 
-      prev_mydata.s04 = mydata_received.s04; 
-      prev_mydata.s05 = mydata_received.s05; 
-      prev_mydata.s06 = mydata_received.s06; 
-      prev_mydata.s07 = mydata_received.s07; 
-      prev_mydata.s08 = mydata_received.s08; 
-      prev_mydata.s09 = mydata_received.s09; 
-      prev_mydata.s10 = mydata_received.s10; 
-      prev_mydata.s11 = mydata_received.s11; 
-      prev_mydata.s12 = mydata_received.s12; 
-      prev_mydata.s13 = mydata_received.s13; 
-      prev_mydata.s14 = mydata_received.s14; 
-      prev_mydata.s15 = mydata_received.s15; 
+      //Serial.println(" mydata_received_changed ----");
     }
   return data_changed;
+}
+
+void reset_SerialDataChanged()
+{
+  prev_mydata.s00 = mydata_received.s00; 
+  prev_mydata.s01 = mydata_received.s01; 
+  prev_mydata.s02 = mydata_received.s02; 
+  prev_mydata.s03 = mydata_received.s03; 
+  prev_mydata.s04 = mydata_received.s04; 
+  prev_mydata.s05 = mydata_received.s05; 
+  prev_mydata.s06 = mydata_received.s06; 
+  prev_mydata.s07 = mydata_received.s07; 
+  prev_mydata.s08 = mydata_received.s08; 
+  prev_mydata.s09 = mydata_received.s09; 
+  prev_mydata.s10 = mydata_received.s10; 
+  prev_mydata.s11 = mydata_received.s11; 
+  prev_mydata.s12 = mydata_received.s12; 
+  prev_mydata.s13 = mydata_received.s13; 
+  prev_mydata.s14 = mydata_received.s14; 
+  prev_mydata.s15 = mydata_received.s15;
+
+  s00_changed = false;
+  s01_changed = false;
+  s02_changed = false;
+  s03_changed = false;
+  s04_changed = false;
+  s05_changed = false;
+  s06_changed = false;
+  s07_changed = false;
+  s08_changed = false;
+  s09_changed = false;
+  s10_changed = false;
+  s11_changed = false;
+  s12_changed = false;
+  s13_changed = false;
+  s14_changed = false;
+  s15_changed = false;
 }
 
 bool loop_ReadFromSerialLine(unsigned long currentMillis) {
