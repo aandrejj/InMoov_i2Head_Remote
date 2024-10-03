@@ -112,7 +112,7 @@ void resetData()
 
 void setup()
 {
-  Serial.begin(19200);
+  Serial.begin(Baud);
   while (!Serial) {
     ;  // wait for serial port to connect. Needed for native USB port only
   }
@@ -187,9 +187,21 @@ void loop()
     //----------------------------------------recvData-------------------------------------
     remoteDataReceived = recvData();
     if(remoteDataReceived == true) {
-      constrain_RfData_0_255();
-      RF_data_changed = RfData_changed();
-      compute_fromRfData_toAngleData();
+      if (mydata_received.mode == 0) // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 3 = ?
+      {
+        constrain_RfData_0_255();
+        RF_data_changed = RfData_changed();
+        compute_fromRfData_toAngleData();
+      }
+      else if (mydata_received.mode == 1)
+      {
+          serial_data_changed = serialData_changed();
+          if(serial_data_changed == true) {
+            compute_from_SerialData_toAngleData();
+            //Serial.println("@2.50 started.");
+            constrain_allServoAngles_0_255();
+          }
+      }
     } //end of if(remoteDataReceived)
     //Serial.println(" @1.2 end");
   }
@@ -284,7 +296,7 @@ void compute_from_SerialData_toAngleData()
   servo_forheadLeft_Angle      = constrain(mydata_received.s14, 0, 255);
   servo_Jaw_UpDown_Angle       = constrain(mydata_received.s15, 0, 255);
 
-  Serial.println("s00 = "+ String(mydata_received.s00));
+  //Serial.println("s00 = "+ String(mydata_received.s00));
 
 }
 
@@ -314,14 +326,17 @@ void compute_fromRfData_toAngleData()
 }
 
 void constrain_RfData_0_255() {
-  ch[1] = constrain(data.ch1, 0, 255);
-  ch[2] = constrain(data.ch2, 0, 255);
-  ch[3] = constrain(data.ch3, 0, 255);
-  ch[4] = constrain(data.ch4, 0, 255);
-  ch[5] = constrain(data.ch5, 0, 255);
-  ch[6] = constrain(data.ch6, 0, 255);
-  ch[7] = constrain(data.ch7, 0, 255);
-  ch[8] = constrain(data.ch8, 0, 255);
+  if (mydata_received.mode == 0) // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 3 = ?
+  {
+    ch[1] = constrain(mydata_received.s00, 0, 255);
+    ch[2] = constrain(mydata_received.s01, 0, 255);
+    ch[3] = constrain(mydata_received.s02, 0, 255);
+    ch[4] = constrain(mydata_received.s03, 0, 255);
+    ch[5] = constrain(mydata_received.s04, 0, 255);
+    ch[6] = constrain(mydata_received.s05, 0, 255);
+    ch[7] = constrain(mydata_received.s06, 0, 255);
+    ch[8] = constrain(mydata_received.s07, 0, 255);
+  }
 }
 
 
@@ -483,7 +498,7 @@ bool serialData_changed() {
   if(mydata_received.s14 != prev_mydata.s14){data_changed = true; Serial.print("s14 = "+ String(mydata_received.s14)+" ");}
   if(mydata_received.s15 != prev_mydata.s15){data_changed = true; Serial.print("s15 = "+ String(mydata_received.s15)+" ");}
   if(data_changed == true){
-      Serial.println(" mydata_received_changed ----DataChanged @SerialLine ");
+      Serial.println(" mydata_received_changed ----");
       prev_mydata.s00 = mydata_received.s00; 
       prev_mydata.s01 = mydata_received.s01; 
       prev_mydata.s02 = mydata_received.s02; 
