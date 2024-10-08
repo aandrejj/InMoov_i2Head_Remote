@@ -1,7 +1,7 @@
 
-#define SERVO_MIN_eyeLeftUD         175
+#define SERVO_MIN_eyeLeftUD         175 //hore  0 
 #define SERVO_MID_eyeLeftUD         325
-#define SERVO_MAX_eyeLeftUD         475
+#define SERVO_MAX_eyeLeftUD         475 //dole  255
 
 #define SERVO_MIN_eyeLeftLR         275
 #define SERVO_MID_eyeLeftLR         363

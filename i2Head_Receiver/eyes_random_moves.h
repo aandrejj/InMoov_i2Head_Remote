@@ -1,0 +1,10 @@
+#define ClosedEyes_eyelidLeftUpper_Angle 233
+#define ClosedEyes_eyelidLeftLower_Angle 118
+#define ClosedEyes_eyelidRightUpper_Angle 20
+#define ClosedEyes_eyelidRightLower_Angle 135
+
+#define OpenedEyes_eyelidLeftUpper_Angle 127
+#define OpenedEyes_eyelidLeftLower_Angle 127
+#define OpenedEyes_eyelidRightUpper_Angle 127
+#define OpenedEyes_eyelidRightLower_Angle 127
+
