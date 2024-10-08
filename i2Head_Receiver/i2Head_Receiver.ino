@@ -4,7 +4,6 @@
  
 
 #define USE_RF_REMOTE
-//#define USE_SERIAL_LINE
 
 
 #include <SPI.h>
@@ -15,13 +14,9 @@
 #include "Servo_Min_Max.h"
 #include "i2Head_Receiver.h"
 
-#include "EasyTransfer.h"
-#include "SoftwareSerial.h"
 #include "TxRx_dataStructures.h"
 
 //#define HIGHSPEED 
-#define SERIAL_OUTPUT_LINE_RX 2  // Bluetooth RX -> Arduino D9
-#define SERIAL_OUTPUT_LINE_TX 3 // Bluetooth TX -> Arduino D10
 
 #ifdef HIGHSPEED
   #define Baud 38400   // Serial monitor
@@ -48,15 +43,6 @@ long previousSafetyMillis;
 unsigned long previousServoMillis=0;
 const long servoInterval = 200;
 
-unsigned long previousMillis_SerialLine = 0;
-const long interval_SerialLine = 150;
-
-SoftwareSerial serialOutputLine(SERIAL_OUTPUT_LINE_TX, SERIAL_OUTPUT_LINE_RX);
-//create object
-EasyTransfer serialLine; // send serial
-//EasyTransfer ET1;   // send serial
-//EasyTransfer ET2;   // rec serial
-
 RX_DATA_STRUCTURE mydata_received;
 RX_DATA_STRUCTURE prev_mydata;
 //TX_DATA_STRUCTURE mydata_remote;
@@ -64,18 +50,7 @@ RX_DATA_STRUCTURE prev_mydata;
 
 void resetData()
 {
-//Definujeme iniciálnu hodnotu každého vstupu údajov
-// potenciometre budú v strednej pozícii, takže 127 je v centre od 254
-/*
-  data.ch1 = 127;
-  data.ch2 = 127;
-  data.ch3 = 127;
-  data.ch4 = 127;
-  data.ch5 = 127;
-  data.ch6 = 127;
-  data.ch7 = 127;
-  data.ch8 = 127;
-*/
+
   mydata_received.s00 = 127;
   mydata_received.s01 = 127;
   mydata_received.s02 = 127;
@@ -119,18 +94,11 @@ void setup()
     radio.setAutoAck(false);
     radio.setDataRate(RF24_250KBPS);  
     radio.openReadingPipe(1,pipeIn);
-    //začneme s rádiokomunikáciou
+    
     radio.startListening();
     Serial.println("setup: @4 rf-radio started");
   #endif
 
-  #ifdef USE_SERIAL_LINE
-    Serial.println("setup: @5 serialOutputLine.begin()");
-    serialOutputLine.begin(BTBaud);
-    Serial.println("setup: @6 serialLine.begin()");
-    serialLine.begin(details(mydata_received), &serialOutputLine);
-    Serial.println("setup: @7 serialLine started");
-  #endif
   delay(500);
 
   Serial.println("setup: @8 done. setup END.");
@@ -193,30 +161,6 @@ void loop()
   }
   #endif
   // -----------  end of RF-data---------------------------------------------------------------
-
-  //------------data from Serial Line-----------------------------------------------------------------
-  #ifdef USE_SERIAL_LINE
-    if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) 
-    {  // start timed event for read and send
-      previousMillis_SerialLine = currentMillis;
-      //Serial.println("@2.1 started.");
-
-      //-----------loop_ReadFromSerialLine-------
-      serialDataReceived = loop_ReadFromSerialLine(currentMillis); 
-      //Serial.println("@2.2 started.");
-      if(serialDataReceived == true) {
-        serial_data_changed = serialData_changed();
-        if(serial_data_changed == true) {
-          compute_from_SerialData_toAngleData();
-          //Serial.println("@2.50 started.");
-          constrain_allServoAngles_0_255();
-          reset_SerialDataChanged();
-        } //end of if (mydata_received_changed())
-      } //end of if (serialDataReceived)
-      //Serial.println(" @2.99 end.");
-    }
-  #endif
-  //------------  end of  Serial Line---------------------------------------------------------------------
 
   //-------------------Servos  handling-----------------------------------------------------------------
   //if (currentMillis - previousServoMillis >= servoInterval) 
@@ -284,8 +228,6 @@ void compute_from_SerialData_toAngleData()
   servo_forheadLeft_Angle      = constrain(mydata_received.s14, 0, 255);
   servo_Jaw_UpDown_Angle       = constrain(mydata_received.s15, 0, 255);
 
-  //Serial.println("s00 = "+ String(mydata_received.s00));
-
 }
 
 void compute_fromRfData_toAngleData()
@@ -326,7 +268,6 @@ void constrain_RfData_0_255() {
     ch[8] = constrain(mydata_received.s07, 0, 255);
   }
 }
-
 
 void constrain_allServoAngles_0_255() {
   servo_eyeLeftUD_Angle        = constrain(servo_eyeLeftUD_Angle       , 0, 255);
@@ -443,9 +384,7 @@ void show_ChangedData_toDebug()
       //Serial.print("<"+String(ch[1])+", "+String(ch[5])+", "+String(ch[6])+">, ");
     }
   #endif
-  #ifdef USE_SERIAL_LINE
-    //Serial.print(" mydata_received.s00 = "+ String(mydata_received.s00));
-  #endif
+
 }
 
 void copyActualPwmData_toPreviousPwmData() {
@@ -529,32 +468,3 @@ void reset_SerialDataChanged()
   s15_changed = false;
 }
 
-bool loop_ReadFromSerialLine(unsigned long currentMillis) {
-  bool serialDataReceived = false;
-  //if (currentMillis - previousMillis_SerialLine >= interval_SerialLine) {  // start timed event for read and send
-    //previousMillis_SerialLine = currentMillis;
-//Serial.println("@2.3 ReadFromSerialLine");
-    if(serialLine.receiveData()){ //ET2.receiveData())            // main data receive
-      //Serial.println("@2.4 ReadFromSerialLine");
-      previousSafetyMillis = currentMillis; 
-      //mydata_send.mode = mode;
-      //mydata_send.count = count;
-      //ToDo here
-      Serial.println("loop_ReadFromSerialLine:mydata_received = 0:" + String(mydata_received.s00) +", 1:" + String(mydata_received.s01) +", 2:" + String(mydata_received.s02) +", 3:" + String(mydata_received.s03));
-      count = count + 1;                                              // update count for remote monitoring
-      serialDataReceived = true;
-    } else if(currentMillis - previousSafetyMillis > 200) {         // safeties
-      //Serial.println("@2.5 ReadFromSerialLine");
-      noDataCount = noDataCount + 1;                                  // update count for remote monitoring
-      //Serial.println("!"+String(noDataCount))+"! No Data ");
-      Serial.println("! No Serial Data!");
-    }
-  //}  // end of timed event Receive/Send
-
-  //if (currentMillis - previousServoMillis >= servoInterval) {  // start timed event for Servos  (200 ms)
-	//previousServoMillis = currentMillis;
-	////ToDo here
-  //}
-  return serialDataReceived;
-	  
-}
