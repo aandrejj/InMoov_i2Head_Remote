@@ -139,6 +139,7 @@ void loop()
     //----------------------------------------recvData-------------------------------------
     remoteDataReceived = recvData();
     if(remoteDataReceived == true) {
+      previousSafetyMillis = currentMillis; 
       //Serial.println("@1.2 remoteDataReceived = "+String(remoteDataReceived));
       if (mydata_received.mode == 0) // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 3 = ?
       {
@@ -156,7 +157,11 @@ void loop()
             reset_SerialDataChanged();
           }
       }
-    } //end of if(remoteDataReceived)
+    } else  if(currentMillis - previousSafetyMillis > 350) {         // safeties
+      noDataCount = noDataCount+1;                                              // update count for remote monitoring
+      Serial.println("!"+String(noDataCount)+"! No Data ");
+      //ToDo Add RandomEyesMovement here
+    }
     //Serial.println(" @1.2 end");
   }
   #endif
