@@ -294,16 +294,18 @@ void lookAtRandomDirection(bool generateRandomDirection, long minUpDown, long ma
 {
     if(generateRandomDirection == true) {
         UpDownState = random(minUpDown, maxUpDown);
-        LeftRightState = random(40, 140);
-        lidMod = ( 40 - UpDownState)/2;
+        LeftRightState = random(30, 220);
+        lidMod = ( 60 - UpDownState)/2;
          lookUpDown_write(UpDownState);
       lookLeftRight_write(LeftRightState);
     }
 
-     lidLowerLeft_write(160+lidMod);
-     lidUpperLeft_write( 70+lidMod);
-    lidLowerRight_write( 30-lidMod);
-    lidUpperRight_write(110-lidMod);
+     lidUpperLeft_write(120+lidMod);// 70+lidMod);
+    lidUpperRight_write(90+lidMod);//110-lidMod);
+
+     lidLowerLeft_write(80+lidMod);//160+lidMod);
+    lidLowerRight_write(80+lidMod);// 30-lidMod);
+
 
 }
 
@@ -314,10 +316,11 @@ void blink (int time)
       lidUpperRight_write(255);//ClosedEyes_eyelidRightUpper_Angle);//pwm.setPWM(4, 0, 240);
       lidUpperRight_write(255);//ClosedEyes_eyelidRightLower_Angle);//pwm.setPWM(5, 0, 400);
       delay(time);
-      lidUpperLeft_write( 70+lidMod);//pwm.setPWM(2, 0, uplidpulse);
-      lidLowerLeft_write(160+lidMod);//pwm.setPWM(3, 0, lolidpulse);
-      lidLowerRight_write( 30-lidMod);//pwm.setPWM(4, 0, altuplidpulse);
-      lidUpperRight_write(110-lidMod);//pwm.setPWM(5, 0, altlolidpulse);
+      lookAtRandomDirection(false, 0, 0,"blink");
+      //lidUpperLeft_write( 70+lidMod);//pwm.setPWM(2, 0, uplidpulse);
+      //lidLowerLeft_write(160+lidMod);//pwm.setPWM(3, 0, lolidpulse);
+      //lidLowerRight_write( 30-lidMod);//pwm.setPWM(4, 0, altuplidpulse);
+      //lidUpperRight_write(110-lidMod);//pwm.setPWM(5, 0, altlolidpulse);
     //----------------------------------
 }
 #endif
@@ -419,9 +422,9 @@ void convert_allAngle_to_Pwm_Min_Center_Max(){
       servo_eyeRightUD_Pwm      = (servo_eyeRightUD_Angle       < 128 ? map(servo_eyeRightUD_Angle       , 0, 127, SERVO_MIN_eyeRightUD,       SERVO_MID_eyeRightUD)      : map(servo_eyeRightUD_Angle,       128, 255, SERVO_MID_eyeRightUD,       SERVO_MAX_eyeRightUD)); 
       servo_eyeRightLR_Pwm      = (servo_eyeRightLR_Angle       < 128 ? map(servo_eyeRightLR_Angle       , 0, 127, SERVO_MIN_eyeRightLR,       SERVO_MID_eyeRightLR)      : map(servo_eyeRightLR_Angle,       128, 255, SERVO_MID_eyeRightLR,       SERVO_MAX_eyeRightLR)); 
       servo_eyelidLeftUpper_Pwm = (servo_eyelidLeftUpper_Angle  < 128 ?  map(servo_eyelidLeftUpper_Angle , 0, 127, SERVO_MIN_eyelidLeftUpper,  SERVO_MID_eyelidLeftUpper) : map(servo_eyelidLeftUpper_Angle , 128, 255, SERVO_MID_eyelidLeftUpper,  SERVO_MAX_eyelidLeftUpper));
-      servo_eyelidLeftLower_Pwm = (servo_eyelidLeftLower_Angle  < 128 ?  map(servo_eyelidLeftLower_Angle , 0, 127, SERVO_MIN_eyelidLeftLower,  SERVO_MID_eyelidLeftLower) : map(servo_eyelidLeftLower_Angle , 128, 255, SERVO_MID_eyelidLeftLower,  SERVO_MAX_eyelidLeftLower));
+      servo_eyelidLeftLower_Pwm = (servo_eyelidLeftLower_Angle  < 128 ?  map(servo_eyelidLeftLower_Angle , 0, 127, SERVO_MAX_eyelidLeftLower,  SERVO_MID_eyelidLeftLower) : map(servo_eyelidLeftLower_Angle , 128, 255, SERVO_MID_eyelidLeftLower,  SERVO_MIN_eyelidLeftLower));  //invert
       servo_eyelidRightUpper_Pwm= (servo_eyelidRightUpper_Angle < 128 ?  map(servo_eyelidRightUpper_Angle, 0, 127, SERVO_MAX_eyelidRightUpper, SERVO_MID_eyelidRightUpper): map(servo_eyelidRightUpper_Angle, 128, 255, SERVO_MID_eyelidRightUpper, SERVO_MIN_eyelidRightUpper)); //invertovane
-      servo_eyelidRightLower_Pwm= (servo_eyelidRightLower_Angle < 128 ?  map(servo_eyelidRightLower_Angle, 0, 127, SERVO_MAX_eyelidRightLower, SERVO_MID_eyelidRightLower): map(servo_eyelidRightLower_Angle, 128, 255, SERVO_MID_eyelidRightLower, SERVO_MIN_eyelidRightLower)); //invertovane
+      servo_eyelidRightLower_Pwm= (servo_eyelidRightLower_Angle < 128 ?  map(servo_eyelidRightLower_Angle, 0, 127, SERVO_MIN_eyelidRightLower, SERVO_MID_eyelidRightLower): map(servo_eyelidRightLower_Angle, 128, 255, SERVO_MID_eyelidRightLower, SERVO_MAX_eyelidRightLower));
       servo_eyebrowRight_Pwm    = (servo_eyebrowRight_Angle     < 128 ? map(servo_eyebrowRight_Angle     , 0, 127, SERVO_MIN_eyebrowRight,     SERVO_MID_eyebrowRight)    : map(servo_eyebrowRight_Angle    , 128, 255, SERVO_MID_eyebrowRight,     SERVO_MAX_eyebrowRight));
       servo_eyebrowLeft_Pwm     = (servo_eyebrowLeft_Angle      < 128 ? map(servo_eyebrowLeft_Angle      , 0, 127, SERVO_MIN_eyebrowLeft,      SERVO_MID_eyebrowLeft)     : map(servo_eyebrowLeft_Angle     , 128, 255, SERVO_MID_eyebrowLeft,      SERVO_MAX_eyebrowLeft));
       servo_cheekRight_Pwm      = (servo_cheekRight_Angle       < 128 ? map(servo_cheekRight_Angle       , 0, 127, SERVO_MIN_cheekRight,       SERVO_MID_cheekRight)      : map(servo_cheekRight_Angle      , 128, 255, SERVO_MID_cheekRight,       SERVO_MAX_cheekRight));
@@ -644,9 +647,9 @@ bool servoSender_write(byte servo_angle, byte servoGroup) {
 		chanelNum1 = i01_head_eyelidLeftLower;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = SERVO_MIN_eyelidLeftLower;
+ 		SERVO1_MIN = SERVO_MAX_eyelidLeftLower;
 		SERVO1_MID = SERVO_MID_eyelidLeftLower;
-		SERVO1_MAX = SERVO_MAX_eyelidLeftLower;
+		SERVO1_MAX = SERVO_MIN_eyelidLeftLower;
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
@@ -666,9 +669,9 @@ bool servoSender_write(byte servo_angle, byte servoGroup) {
 		chanelNum1 = i01_head_eyelidRightLower;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = SERVO_MAX_eyelidRightLower;
+ 		SERVO1_MIN = SERVO_MIN_eyelidRightLower;
 		SERVO1_MID = SERVO_MID_eyelidRightLower;
-		SERVO1_MAX = SERVO_MIN_eyelidRightLower;
+		SERVO1_MAX = SERVO_MAX_eyelidRightLower;
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;

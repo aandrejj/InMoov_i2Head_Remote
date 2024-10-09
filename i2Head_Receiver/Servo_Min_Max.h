@@ -1,19 +1,19 @@
 
 #define SERVO_MIN_eyeLeftUD         175 //hore  0 
-#define SERVO_MID_eyeLeftUD         325
+#define SERVO_MID_eyeLeftUD         340
 #define SERVO_MAX_eyeLeftUD         475 //dole  255
 
 #define SERVO_MIN_eyeLeftLR         275
-#define SERVO_MID_eyeLeftLR         363
-#define SERVO_MAX_eyeLeftLR         510
+#define SERVO_MID_eyeLeftLR         370
+#define SERVO_MAX_eyeLeftLR         410
 
 #define SERVO_MIN_eyeRightUD        350
-#define SERVO_MID_eyeRightUD        443
+#define SERVO_MID_eyeRightUD        402
 #define SERVO_MAX_eyeRightUD        535
 
 #define SERVO_MIN_eyeRightLR        270
-#define SERVO_MID_eyeRightLR        423
-#define SERVO_MAX_eyeRightLR        535
+#define SERVO_MID_eyeRightLR        428//382
+#define SERVO_MAX_eyeRightLR        495
  
 #define SERVO_MIN_eyelidLeftUpper   323//135
 #define SERVO_MID_eyelidLeftUpper   430//395
