@@ -21,6 +21,24 @@ struct RX_DATA_STRUCTURE{
     byte s14;
     byte s15;
 
+    byte x00;
+    byte x01;
+    byte x02;
+    byte x03;
+    byte x04;
+    byte x05;
+    byte x06;
+    byte x07;
+    byte x08;
+    byte x09;
+    byte x10;
+    byte x11;
+    byte x12;
+    byte x13;
+    byte x14;
+    byte x15;
+
+    byte flags;
 };
 
 struct TX_DATA_STRUCTURE{
