@@ -2,7 +2,7 @@ struct RX_DATA_STRUCTURE{
   //put your variable definitions here for the data you want to send
   //THIS MUST BE EXACTLY THE SAME ON THE OTHER ARDUINO
   
-    int16_t mode; // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 3 = ?
+    int16_t mode; // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 2 = MinMaxServoConfig (min max for 2 chanels)
     
     byte s00;
     byte s01;
@@ -20,6 +20,7 @@ struct RX_DATA_STRUCTURE{
     byte s13;
     byte s14;
     byte s15;
+
 };
 
 struct TX_DATA_STRUCTURE{
