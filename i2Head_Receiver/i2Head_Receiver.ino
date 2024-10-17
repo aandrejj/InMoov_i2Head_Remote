@@ -1,10 +1,8 @@
 /* i2Head_Receiver  RF NANO Prímacovy kod 
 
 */
- 
 
 #define USE_RF_REMOTE
-
 
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -13,13 +11,15 @@
 #include <Servo.h>
 #include "Servo_Min_Max.h"
 #include "i2Head_Receiver.h"
+#include "ServoConnectionToPwm.h"
 
 #include "TxRx_dataStructures.h"
 
 #define RANDOM_EYES_MOVEMENT
 
 #ifdef RANDOM_EYES_MOVEMENT
-  #include "eyes_random_moves.h"
+  #include "RandomEyesMovement.h"
+  //#include "eyes_random_moves.h"
   //#include "ServoSender.h"
 
   #define lookUpDown    1
@@ -43,10 +43,14 @@ int16_t mode;
 int count;
 int noDataCount = 0;
 
+#ifdef RANDOM_EYES_MOVEMENT
+  RandomEyesMovement randomEyesMovement; //  = new RandomEyesMovement();
+#endif
 
 const uint64_t pipeIn = 0x0022;   //Tento isty kod musi mať aj primač
 RF24 radio(10,9);  //zapojenie CE a CSN pinov
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
 
 unsigned long previousMillis = 0;
 const long interval = 20;
@@ -61,6 +65,7 @@ RX_DATA_STRUCTURE prev_mydata;
 //TX_DATA_STRUCTURE mydata_remote;
 
 #ifdef RANDOM_EYES_MOVEMENT
+  /*
   int UpDownState;
   int LeftRightState;
   int lidMod;
@@ -71,6 +76,7 @@ RX_DATA_STRUCTURE prev_mydata;
 
   long REM_interval;
   long REM_pose;
+  */
   /*
   ServoSender lookUpDown     = ServoSender(i01_head_eyeLeftUD       , i01_head_eyeRightUD, SERVO_MIN_eyeLeftUD       , SERVO_MID_eyeLeftUD       , SERVO_MAX_eyeLeftUD       , SERVO_MIN_eyeRightUD, SERVO_MID_eyeRightUD, SERVO_MAX_eyeRightUD);
   ServoSender lookLeftRight  = ServoSender(i01_head_eyeLeftLR       , i01_head_eyeRightLR, SERVO_MIN_eyeLeftLR       , SERVO_MID_eyeLeftLR       , SERVO_MAX_eyeLeftLR       , SERVO_MIN_eyeRightLR, SERVO_MID_eyeRightLR, SERVO_MAX_eyeRightLR);
@@ -119,7 +125,9 @@ void setup()
   delay(200);
 
   #ifdef RANDOM_EYES_MOVEMENT
-    randomSeed(analogRead(A7));
+    randomEyesMovement.begin(&pwm);
+    //randomSeed(analogRead(A7));
+
     //lookUpDown.begin(pwm);
     //lookLeftRight.begin(pwm);
     //lidLowerLeft.begin(pwm);
@@ -205,7 +213,8 @@ void loop()
       //Serial.println("!"+String(noDataCount)+"! No Data ");
       //ToDo Add RandomEyesMovement here
       #ifdef RANDOM_EYES_MOVEMENT
-        randomEyesMovement(currentMillis);
+        //randomEyesMovement(currentMillis);
+        randomEyesMovement.moveEyesRandomly(currentMillis);
       #endif
     }
     //Serial.println(" @1.2 end");
@@ -249,6 +258,7 @@ void loop()
 //------------------------------end of  loop()----------------------------------
 
 #ifdef RANDOM_EYES_MOVEMENT
+/*
 void randomEyesMovement(unsigned long currentMillis){
   Serial.print("REM: Start");
   REM_interval = random(20,2000);
@@ -290,6 +300,8 @@ void randomEyesMovement(unsigned long currentMillis){
   
   delay(REM_interval);
 }
+*/
+/*
 void lookAtRandomDirection(bool generateRandomDirection, long minUpDown, long maxUpDown, String textToShow)
 {
     if(generateRandomDirection == true) {
@@ -308,7 +320,8 @@ void lookAtRandomDirection(bool generateRandomDirection, long minUpDown, long ma
 
 
 }
-
+*/
+/*
 void blink (int time) 
 {
       lidUpperLeft_write(255);//ClosedEyes_eyelidLeftUpper_Angle);//400  //pwm.setPWM(2, 0, 400);
@@ -323,6 +336,7 @@ void blink (int time)
       //lidUpperRight_write(110-lidMod);//pwm.setPWM(5, 0, altlolidpulse);
     //----------------------------------
 }
+*/
 #endif
 
 bool RfData_changed(){
@@ -603,6 +617,7 @@ void reset_SerialDataChanged()
 //----------------------------Random eyes movement-------------------------------------------------
 //----------------------------Random eyes movement-------------------------------------------------
 #ifdef RANDOM_EYES_MOVEMENT
+/*
 bool lookUpDown_write(byte servo_angle)   {return servoSender_write(servo_angle, lookUpDown   );}
 bool lookLeftRight_write(byte servo_angle){return servoSender_write(servo_angle, lookLeftRight);}
 bool lidLowerLeft_write(byte servo_angle) {return servoSender_write(servo_angle, lidLowerLeft );}
@@ -703,4 +718,5 @@ bool servoSender_write(byte servo_angle, byte servoGroup) {
     }
   return true;
 }
+*/
 #endif
