@@ -63,3 +63,55 @@
 #define SERVO_MIN_Jaw_UpDown        229
 #define SERVO_MID_Jaw_UpDown        325
 #define SERVO_MAX_Jaw_UpDown        420
+
+
+#define LBL_SRV_MIN_eyeLeftUD         0
+#define LBL_SRV_MIN_eyeLeftLR         1
+#define LBL_SRV_MIN_eyeRightUD        2
+#define LBL_SRV_MIN_eyeRightLR        3
+#define LBL_SRV_MIN_eyelidLeftUpper   4
+#define LBL_SRV_MIN_eyelidLeftLower   5
+#define LBL_SRV_MIN_eyelidRightUpper  6
+#define LBL_SRV_MIN_eyelidRightLower  7
+#define LBL_SRV_MIN_eyebrowRight      8
+#define LBL_SRV_MIN_eyebrowLeft       9
+#define LBL_SRV_MIN_cheekRight       10
+#define LBL_SRV_MIN_cheekLeft        11
+#define LBL_SRV_MIN_upperLip         12
+#define LBL_SRV_MIN_forheadRight     13
+#define LBL_SRV_MIN_forheadLeft      14
+#define LBL_SRV_MIN_Jaw_UpDown       15
+
+#define LBL_SRV_MID_eyeLeftUD        16
+#define LBL_SRV_MID_eyeLeftLR        17
+#define LBL_SRV_MID_eyeRightUD       18
+#define LBL_SRV_MID_eyeRightLR       19
+#define LBL_SRV_MID_eyelidLeftUpper  20
+#define LBL_SRV_MID_eyelidLeftLower  21
+#define LBL_SRV_MID_eyelidRightUpper 22
+#define LBL_SRV_MID_eyelidRightLower 23
+#define LBL_SRV_MID_eyebrowRight     24
+#define LBL_SRV_MID_eyebrowLeft      25
+#define LBL_SRV_MID_cheekRight       26
+#define LBL_SRV_MID_cheekLeft        27
+#define LBL_SRV_MID_upperLip         28
+#define LBL_SRV_MID_forheadRight     29
+#define LBL_SRV_MID_forheadLeft      30
+#define LBL_SRV_MID_Jaw_UpDown       31
+
+#define LBL_SRV_MAX_eyeLeftUD        32
+#define LBL_SRV_MAX_eyeLeftLR        33
+#define LBL_SRV_MAX_eyeRightUD       34
+#define LBL_SRV_MAX_eyeRightLR       35
+#define LBL_SRV_MAX_eyelidLeftUpper  36
+#define LBL_SRV_MAX_eyelidLeftLower  37
+#define LBL_SRV_MAX_eyelidRightUpper 38
+#define LBL_SRV_MAX_eyelidRightLower 39
+#define LBL_SRV_MAX_eyebrowRight     30
+#define LBL_SRV_MAX_eyebrowLeft      41
+#define LBL_SRV_MAX_cheekRight       42
+#define LBL_SRV_MAX_cheekLeft        43
+#define LBL_SRV_MAX_upperLip         44
+#define LBL_SRV_MAX_forheadRight     45
+#define LBL_SRV_MAX_forheadLeft      46
+#define LBL_SRV_MAX_Jaw_UpDown       47

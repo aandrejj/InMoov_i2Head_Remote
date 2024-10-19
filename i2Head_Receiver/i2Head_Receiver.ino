@@ -4,6 +4,12 @@
 
 #define USE_RF_REMOTE
 
+#define USE_DISPLAY_ST7735
+
+#ifdef USE_DISPLAY_ST7735
+  #include <ST7735.h>
+#endif
+
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
@@ -12,6 +18,7 @@
 #include "Servo_Min_Max.h"
 #include "i2Head_Receiver.h"
 #include "ServoConnectionToPwm.h"
+#include <math.h>
 
 #include "TxRx_dataStructures.h"
 
@@ -19,16 +26,6 @@
 
 #ifdef RANDOM_EYES_MOVEMENT
   #include "RandomEyesMovement.h"
-  //#include "eyes_random_moves.h"
-  //#include "ServoSender.h"
-
-  #define lookUpDown    1
-  #define lookLeftRight 2
-  #define lidLowerLeft  3
-  #define lidUpperLeft  4
-  #define lidLowerRight 5
-  #define lidUpperRight 6
-
 #endif
 
 #define HIGHSPEED 
@@ -38,6 +35,44 @@
 #else
   #define Baud 9600    // Serial monitor
 #endif
+
+#ifdef USE_DISPLAY_ST7735
+
+  //#define OLED_RESET 4
+  #define DISP_CS    6
+  #define DISP_RS    7
+  #define DISP_RST   8
+  #define DISP_SID   4
+  #define DISP_SCLK  5
+  #define LEFT_ARROW_SIZE  2
+  #define LEFT_ARROW_STEP  2
+
+    //           ST7735(uint8_t CS, uint8_t RS, uint8_t SID, uint8_t SCLK, uint8_t RST);
+    ST7735 tft = ST7735(   DISP_CS,    DISP_RS,    DISP_SID,    DISP_SCLK,    DISP_RST); 
+  //ST7735 tft = ST7735(         6,          7,          11,           13,           8); 
+    //           ST7735(uint8_t CS, uint8_t RS, uint8_t RST);
+  //ST7735 tft = ST7735(6, 7, 8);    
+
+// Color definitions
+//#define BLACK           0x0000
+//#define YELLOW          0xFFE0  
+//#define WHITE           0xFFFF
+const uint16_t BLACK = 0x0000;
+const uint16_t WHITE = 0xffff;
+const uint16_t BLUE = 0x001f;
+const uint16_t RED = 0xf800;
+const uint16_t YELLOW = 0xffe0;
+const uint16_t GREEN = 0x07e0;
+
+uint8_t spacing = 8;
+uint8_t yPos = 2;
+uint8_t servoNum = 0;
+
+char servo[]="Srv";//"Servo ";
+char colon[]=":";//": ";
+
+#endif
+
 
 int16_t mode;
 int count;
@@ -65,26 +100,6 @@ RX_DATA_STRUCTURE prev_mydata;
 //TX_DATA_STRUCTURE mydata_remote;
 
 #ifdef RANDOM_EYES_MOVEMENT
-  /*
-  int UpDownState;
-  int LeftRightState;
-  int lidMod;
-  int uplidpulse;
-  int lolidpulse;
-  int altuplidpulse;
-  int altlolidpulse;
-
-  long REM_interval;
-  long REM_pose;
-  */
-  /*
-  ServoSender lookUpDown     = ServoSender(i01_head_eyeLeftUD       , i01_head_eyeRightUD, SERVO_MIN_eyeLeftUD       , SERVO_MID_eyeLeftUD       , SERVO_MAX_eyeLeftUD       , SERVO_MIN_eyeRightUD, SERVO_MID_eyeRightUD, SERVO_MAX_eyeRightUD);
-  ServoSender lookLeftRight  = ServoSender(i01_head_eyeLeftLR       , i01_head_eyeRightLR, SERVO_MIN_eyeLeftLR       , SERVO_MID_eyeLeftLR       , SERVO_MAX_eyeLeftLR       , SERVO_MIN_eyeRightLR, SERVO_MID_eyeRightLR, SERVO_MAX_eyeRightLR);
-  ServoSender lidLowerLeft   = ServoSender(i01_head_eyelidLeftLower ,                  99, SERVO_MIN_eyelidLeftLower , SERVO_MID_eyelidLeftLower , SERVO_MAX_eyelidLeftLower ,                    0,                    0,                    0);
-  ServoSender lidUpperLeft   = ServoSender(i01_head_eyelidLeftUpper ,                  99, SERVO_MIN_eyelidLeftUpper , SERVO_MID_eyelidLeftUpper , SERVO_MAX_eyelidLeftUpper ,                    0,                    0,                    0);
-  ServoSender lidLowerRight  = ServoSender(i01_head_eyelidRightLower,                  99, SERVO_MIN_eyelidRightLower, SERVO_MID_eyelidRightLower, SERVO_MAX_eyelidRightLower,                    0,                    0,                    0);
-  ServoSender lidUpperRight  = ServoSender(i01_head_eyelidRightUpper,                  99, SERVO_MIN_eyelidRightUpper, SERVO_MID_eyelidRightUpper, SERVO_MAX_eyelidRightUpper,                    0,                    0,                    0);
-  */
 #endif
 
 void resetData()
@@ -117,6 +132,22 @@ void setup()
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
 	
+  #ifdef USE_DISPLAY_ST7735
+    Serial.println("setup: tft.initR()...");
+    tft.initR();
+    //tft.initR(INITR_BLACKTAB); 
+
+    //tft.pushColor(uint16_t color)
+    //tft.pushColor(tft.Color565(RED,GREEN,BLUE));
+    //tft.fillScreen(BLACK);
+    //Set background colour
+    Serial.println("setup: tft.fillScreen(BLACK)");
+    tft.fillScreen(BLACK);
+    Serial.println("setup: BLACK =done");
+
+    prepareServoForm();
+  #endif
+
   Serial.println("setup:: @1 Servo Initialization started");
   pwm.begin(); //pwm.begin(0);   0 = driver_ID
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
@@ -125,15 +156,7 @@ void setup()
   delay(200);
 
   #ifdef RANDOM_EYES_MOVEMENT
-    randomEyesMovement.begin(&pwm);
-    //randomSeed(analogRead(A7));
-
-    //lookUpDown.begin(pwm);
-    //lookLeftRight.begin(pwm);
-    //lidLowerLeft.begin(pwm);
-    //lidUpperLeft.begin(pwm);
-    //lidLowerRight.begin(pwm);
-    //lidUpperRight.begin(pwm);
+    randomEyesMovement.begin(&pwm, servoLimits);
   #endif
 
   //konfiguracia NRF24 
@@ -150,23 +173,27 @@ void setup()
     Serial.println("setup: @4 rf-radio started");
   #endif
 
+  //initMinMidMax_values();
+
   delay(500);
 
   Serial.println("setup: @8 done. setup END.");
 }
 
-unsigned long lastRecvTime = 0;
-bool recvData()
-{
-  bool dataReceived = false;
-  while ( radio.available() ) {
-    //radio.read(&data, sizeof(MyData));
-    radio.read(&mydata_received, sizeof(RX_DATA_STRUCTURE));
-    lastRecvTime = millis(); //tu dostávame údaje
-    dataReceived = true;
+#ifdef USE_RF_REMOTE
+  //unsigned long lastRecvTime = 0;
+  bool recvData()
+  {
+    bool dataReceived = false;
+    while ( radio.available() ) {
+      //radio.read(&data, sizeof(MyData));
+      radio.read(&mydata_received, sizeof(RX_DATA_STRUCTURE));
+      //lastRecvTime = millis(); //tu dostávame údaje
+      dataReceived = true;
+    }
+    return dataReceived;
   }
-  return dataReceived;
-}
+#endif
 
 //-------------------------loop------------------------------------------------
 //-------------------------loop------------------------------------------------
@@ -192,7 +219,7 @@ void loop()
     if(remoteDataReceived == true) {
       previousSafetyMillis = currentMillis; 
       //Serial.println("@1.2 remoteDataReceived = "+String(remoteDataReceived));
-      if (mydata_received.mode == 0) // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 3 = ?
+      if (mydata_received.mode == 0) // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 2 = MinMaxServoConfig (min max for 2 chanels)
       {
         constrain_RfData_0_255();
         RF_data_changed = RfData_changed();
@@ -200,12 +227,21 @@ void loop()
       }
       else if (mydata_received.mode == 1)
       {
-          serial_data_changed = serialData_changed();
+        serial_data_changed = serialData_changed();
+        if(serial_data_changed == true) {
+          compute_from_SerialData_toAngleData();
+          //Serial.println("@1.40 started.");
+          constrain_allServoAngles_0_255();
+          reset_SerialDataChanged();
+        }
+      }else if (mydata_received.mode == 2) {
+        serial_data_changed = serialData_changed();
           if(serial_data_changed == true) {
-            compute_from_SerialData_toAngleData();
-            //Serial.println("@1.40 started.");
-            constrain_allServoAngles_0_255();
-            reset_SerialDataChanged();
+            compute_from_SerialData_toMinMax();
+            #ifdef RANDOM_EYES_MOVEMENT
+              //randomEyesMovement(currentMillis);
+              randomEyesMovement.moveEyesRandomly(currentMillis);
+            #endif
           }
       }
     } else  if(currentMillis - previousSafetyMillis > 1000) {         // safeties
@@ -257,87 +293,57 @@ void loop()
 //------------------------------end of  loop()----------------------------------
 //------------------------------end of  loop()----------------------------------
 
-#ifdef RANDOM_EYES_MOVEMENT
-/*
-void randomEyesMovement(unsigned long currentMillis){
-  Serial.print("REM: Start");
-  REM_interval = random(20,2000);
-  Serial.print(", REM_interval = "+String(REM_interval));
-  REM_pose = random (0,3);
-  //if (REM_pose>2) {REM_pose =2;}
-  Serial.println(", REM_pose = "+String(REM_pose));
-  //delay(100);
-  
-  switch (REM_pose){
-    case 0:
-      Serial.println("REM:0.start'blink'");
-      blink(80);
-      Serial.println("REM:0.'blink' end");
-      
-      //Serial.println("REM:0.  starting lookAtDirection(true,..)");
-      lookAtRandomDirection(true, 50, 130, "REM:0, ");
-      //Serial.println("REM:0.  back from lookAtDirection()");
-      
-    break;
-    case 1:
-      Serial.println("REM:1. starting lookAtDirection(true,..)");
-      
-      lookAtRandomDirection(true, 30, 130, "REM:1, ");
-      //Serial.println("REM:1.  back from lookAtDirection()");
-      
-    break;
-    case 2:
-      Serial.println("REM:2.  starting 'blink'....");
-      blink(60);
-      Serial.println("REM:2.  back from 'blink'");
-      
-      //Serial.println("REM:2.  starting lookAtDirection(false,...)");
-      lookAtRandomDirection(false, 30, 130, "REM:2, ");
-      //Serial.println("REM:2.  back from lookAtDirection()");      
-      
-    break;
-  }
-  
-  delay(REM_interval);
-}
-*/
-/*
-void lookAtRandomDirection(bool generateRandomDirection, long minUpDown, long maxUpDown, String textToShow)
-{
-    if(generateRandomDirection == true) {
-        UpDownState = random(minUpDown, maxUpDown);
-        LeftRightState = random(30, 220);
-        lidMod = ( 60 - UpDownState)/2;
-         lookUpDown_write(UpDownState);
-      lookLeftRight_write(LeftRightState);
+void prepareServoForm(){
+  Serial.println("setup: Write servo numbers 1.for {for{}} start");
+//Write servo numbers 
+  for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
+    for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
+      char numRead[2];
+      char combined[30]= {0};
+      dtostrf(servoNum, 1, 0, numRead);
+      strcat(combined, servo);
+      strcat(combined, numRead);
+      tft.drawString(0, yPos, combined, WHITE);
+      //Serial.println("setup: y:"+String(yPos)+", combined:"+String(combined)+", colon:"+String(colon)+"count:"+String(count)+", i:"+String(i)+".");
+      tft.drawString((((strlen(servo) + 1)) * 8), yPos, colon, WHITE);    
+      servoNum ++;
+      yPos += spacing;    
+      }
+      yPos += (2*LEFT_ARROW_STEP); //8;
     }
+Serial.println("setup: 1.for {for{}} done");
 
-     lidUpperLeft_write(120+lidMod);// 70+lidMod);
-    lidUpperRight_write(90+lidMod);//110-lidMod);
+Serial.println("setup: Write initial servo positions (350 to start with)  2.for {for{}} started");
+//Write initial servo positions (350 to start with)  
+  servoNum = 0;
+  yPos = 2;
+  for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
+    for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
+      if(LEFT_ARROW_STEP>2) {
+        char numRead[3];
+        dtostrf(servoLimits[servoNum], 3, 0, numRead);
+        tft.drawString((((strlen(servo) + 2)) * 8), yPos, numRead, YELLOW);
+      } else {
+        char numRead[3];
+        dtostrf(servoLimits[servoNum], 3, 0, numRead);
+        tft.drawString((((strlen(servo) + 2)) * 8), yPos, numRead, YELLOW);
 
-     lidLowerLeft_write(80+lidMod);//160+lidMod);
-    lidLowerRight_write(80+lidMod);// 30-lidMod);
+        char numRead2[3];
+        dtostrf(servoLimits[servoNum + 16], 3, 0, numRead2);
+        tft.drawString((((strlen(servo) + 2 + 4)) * 8), yPos, numRead2, YELLOW);
 
+      }
+      //Serial.println("setup: y:"+String(yPos)+", numRead:"+String(numRead)+", count:"+String(count)+", i:"+String(i)+".");
+      servoNum ++;
+      yPos += spacing;    
+      }
+    yPos += (2*LEFT_ARROW_STEP); //8;
+  }
+  Serial.println("setup: 2.for {for{}} done");
 
+   tft.drawString((128-(LEFT_ARROW_SIZE*8)), 3, "<", WHITE, LEFT_ARROW_SIZE);
 }
-*/
-/*
-void blink (int time) 
-{
-      lidUpperLeft_write(255);//ClosedEyes_eyelidLeftUpper_Angle);//400  //pwm.setPWM(2, 0, 400);
-      lidLowerLeft_write(255);//ClosedEyes_eyelidLeftLower_Angle);//240 //pwm.setPWM(3, 0, 240);
-      lidUpperRight_write(255);//ClosedEyes_eyelidRightUpper_Angle);//pwm.setPWM(4, 0, 240);
-      lidUpperRight_write(255);//ClosedEyes_eyelidRightLower_Angle);//pwm.setPWM(5, 0, 400);
-      delay(time);
-      lookAtRandomDirection(false, 0, 0,"blink");
-      //lidUpperLeft_write( 70+lidMod);//pwm.setPWM(2, 0, uplidpulse);
-      //lidLowerLeft_write(160+lidMod);//pwm.setPWM(3, 0, lolidpulse);
-      //lidLowerRight_write( 30-lidMod);//pwm.setPWM(4, 0, altuplidpulse);
-      //lidUpperRight_write(110-lidMod);//pwm.setPWM(5, 0, altlolidpulse);
-    //----------------------------------
-}
-*/
-#endif
+
 
 bool RfData_changed(){
   bool RF_data_changed = false;
@@ -351,6 +357,169 @@ bool RfData_changed(){
   }
   return RF_data_changed;
 }
+/*
+void initMinMidMax_values() 
+{
+  servoLimits[48]={
+    SERVO_MIN_eyeLeftUD        ,
+    SERVO_MIN_eyeLeftLR        ,
+    SERVO_MIN_eyeRightUD       ,
+    SERVO_MIN_eyeRightLR       ,
+    SERVO_MIN_eyelidLeftUpper  ,
+    SERVO_MIN_eyelidLeftLower  ,
+    SERVO_MIN_eyelidRightUpper ,
+    SERVO_MIN_eyelidRightLower ,
+    SERVO_MIN_eyebrowRight     ,
+    SERVO_MIN_eyebrowLeft      ,
+    SERVO_MIN_cheekRight       ,
+    SERVO_MIN_cheekLeft        ,
+    SERVO_MIN_upperLip         ,
+    SERVO_MIN_forheadRight     ,
+    SERVO_MIN_forheadLeft      ,
+    SERVO_MIN_Jaw_UpDown       ,
+    SERVO_MID_eyeLeftUD       ,
+    SERVO_MID_eyeLeftLR       ,
+    SERVO_MID_eyeRightUD      ,
+    SERVO_MID_eyeRightLR      ,
+    SERVO_MID_eyelidLeftUpper ,
+    SERVO_MID_eyelidLeftLower ,
+    SERVO_MID_eyelidRightUpper,
+    SERVO_MID_eyelidRightLower,
+    SERVO_MID_eyebrowRight    ,
+    SERVO_MID_eyebrowLeft     ,
+    SERVO_MID_cheekRight      ,
+    SERVO_MID_cheekLeft       ,
+    SERVO_MID_upperLip        ,
+    SERVO_MID_forheadRight    ,
+    SERVO_MID_forheadLeft     ,
+    SERVO_MID_Jaw_UpDown      ,
+    SERVO_MAX_eyeLeftUD       ,
+    SERVO_MAX_eyeLeftLR       ,
+    SERVO_MAX_eyeRightUD      ,
+    SERVO_MAX_eyeRightLR      ,
+    SERVO_MAX_eyelidLeftUpper ,
+    SERVO_MAX_eyelidLeftLower ,
+    SERVO_MAX_eyelidRightUpper,
+    SERVO_MAX_eyelidRightLower,
+    SERVO_MAX_eyebrowRight    ,
+    SERVO_MAX_eyebrowLeft     ,
+    SERVO_MAX_cheekRight      ,
+    SERVO_MAX_cheekLeft       ,
+    SERVO_MAX_upperLip        ,
+    SERVO_MAX_forheadRight    ,
+    SERVO_MAX_forheadLeft     ,
+    SERVO_MAX_Jaw_UpDown      
+  };
+}
+*/
+
+void compute_from_SerialData_toMinMax()
+{
+  servoLimits[LBL_SRV_MIN_eyeLeftUD        ] = map(constrain(mydata_received.s00, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyeLeftLR        ] = map(constrain(mydata_received.s01, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyeRightUD       ] = map(constrain(mydata_received.s02, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyeRightLR       ] = map(constrain(mydata_received.s03, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyelidLeftUpper  ] = map(constrain(mydata_received.s04, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyelidLeftLower  ] = map(constrain(mydata_received.s05, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyelidRightUpper ] = map(constrain(mydata_received.s06, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyelidRightLower ] = map(constrain(mydata_received.s07, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyebrowRight     ] = map(constrain(mydata_received.s08, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_eyebrowLeft      ] = map(constrain(mydata_received.s09, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_cheekRight       ] = map(constrain(mydata_received.s10, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_cheekLeft        ] = map(constrain(mydata_received.s11, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_upperLip         ] = map(constrain(mydata_received.s12, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_forheadRight     ] = map(constrain(mydata_received.s13, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_forheadLeft      ] = map(constrain(mydata_received.s14, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MIN_Jaw_UpDown       ] = map(constrain(mydata_received.s15, 0, 255), 0, 255, 0, 1023);
+
+  servoLimits[LBL_SRV_MAX_eyeLeftUD        ] = map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyeLeftLR        ] = map(constrain(mydata_received.x01, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyeRightUD       ] = map(constrain(mydata_received.x02, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyeRightLR       ] = map(constrain(mydata_received.x03, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyelidLeftUpper  ] = map(constrain(mydata_received.x04, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyelidLeftLower  ] = map(constrain(mydata_received.x05, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyelidRightUpper ] = map(constrain(mydata_received.x06, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyelidRightLower ] = map(constrain(mydata_received.x07, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyebrowRight     ] = map(constrain(mydata_received.x08, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_eyebrowLeft      ] = map(constrain(mydata_received.x09, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_cheekRight       ] = map(constrain(mydata_received.x10, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_cheekLeft        ] = map(constrain(mydata_received.x11, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_upperLip         ] = map(constrain(mydata_received.x12, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_forheadRight     ] = map(constrain(mydata_received.x13, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_forheadLeft      ] = map(constrain(mydata_received.x14, 0, 255), 0, 255, 0, 1023);
+  servoLimits[LBL_SRV_MAX_Jaw_UpDown       ] = map(constrain(mydata_received.x15, 0, 255), 0, 255, 0, 1023);
+
+  servoLimits[LBL_SRV_MID_eyeLeftUD        ] =  round((servoLimits[LBL_SRV_MAX_eyeLeftUD         ] + servoLimits[LBL_SRV_MIN_eyeLeftUD       ])/2);
+  servoLimits[LBL_SRV_MID_eyeLeftLR        ] =  round((servoLimits[LBL_SRV_MAX_eyeLeftLR         ] + servoLimits[LBL_SRV_MIN_eyeLeftLR       ])/2);
+  servoLimits[LBL_SRV_MID_eyeRightUD       ] =  round((servoLimits[LBL_SRV_MAX_eyeRightUD        ] + servoLimits[LBL_SRV_MIN_eyeRightUD      ])/2);
+  servoLimits[LBL_SRV_MID_eyeRightLR       ] =  round((servoLimits[LBL_SRV_MAX_eyeRightLR        ] + servoLimits[LBL_SRV_MIN_eyeRightLR      ])/2);
+  servoLimits[LBL_SRV_MID_eyelidLeftUpper  ] =  round((servoLimits[LBL_SRV_MAX_eyelidLeftUpper   ] + servoLimits[LBL_SRV_MIN_eyelidLeftUpper ])/2);
+  servoLimits[LBL_SRV_MID_eyelidLeftLower  ] =  round((servoLimits[LBL_SRV_MAX_eyelidLeftLower   ] + servoLimits[LBL_SRV_MIN_eyelidLeftLower ])/2);
+  servoLimits[LBL_SRV_MID_eyelidRightUpper ] =  round((servoLimits[LBL_SRV_MAX_eyelidRightUpper  ] + servoLimits[LBL_SRV_MIN_eyelidRightUpper])/2);
+  servoLimits[LBL_SRV_MID_eyelidRightLower ] =  round((servoLimits[LBL_SRV_MAX_eyelidRightLower  ] + servoLimits[LBL_SRV_MIN_eyelidRightLower])/2);
+  servoLimits[LBL_SRV_MID_eyebrowRight     ] =  round((servoLimits[LBL_SRV_MAX_eyebrowRight      ] + servoLimits[LBL_SRV_MIN_eyebrowRight    ])/2);
+  servoLimits[LBL_SRV_MID_eyebrowLeft      ] =  round((servoLimits[LBL_SRV_MAX_eyebrowLeft       ] + servoLimits[LBL_SRV_MIN_eyebrowLeft     ])/2);
+  servoLimits[LBL_SRV_MID_cheekRight       ] =  round((servoLimits[LBL_SRV_MAX_cheekRight        ] + servoLimits[LBL_SRV_MIN_cheekRight      ])/2);
+  servoLimits[LBL_SRV_MID_cheekLeft        ] =  round((servoLimits[LBL_SRV_MAX_cheekLeft         ] + servoLimits[LBL_SRV_MIN_cheekLeft       ])/2);
+  servoLimits[LBL_SRV_MID_upperLip         ] =  round((servoLimits[LBL_SRV_MAX_upperLip          ] + servoLimits[LBL_SRV_MIN_upperLip        ])/2);
+  servoLimits[LBL_SRV_MID_forheadRight     ] =  round((servoLimits[LBL_SRV_MAX_forheadRight      ] + servoLimits[LBL_SRV_MIN_forheadRight    ])/2);
+  servoLimits[LBL_SRV_MID_forheadLeft      ] =  round((servoLimits[LBL_SRV_MAX_forheadLeft       ] + servoLimits[LBL_SRV_MIN_forheadLeft     ])/2);
+  servoLimits[LBL_SRV_MID_Jaw_UpDown       ] =  round((servoLimits[LBL_SRV_MAX_Jaw_UpDown        ] + servoLimits[LBL_SRV_MIN_Jaw_UpDown      ])/2);
+
+  /*
+  servo_eyeLeftUD_Min_Angle        = map(constrain(mydata_received.s00, 0, 255), 0, 255, 0, 1023);
+  servo_eyeLeftLR_Min_Angle        = map(constrain(mydata_received.s01, 0, 255), 0, 255, 0, 1023);
+  servo_eyeRightUD_Min_Angle       = map(constrain(mydata_received.s02, 0, 255), 0, 255, 0, 1023);
+  servo_eyeRightLR_Min_Angle       = map(constrain(mydata_received.s03, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidLeftUpper_Min_Angle  = map(constrain(mydata_received.s04, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidLeftLower_Min_Angle  = map(constrain(mydata_received.s05, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidRightUpper_Min_Angle = map(constrain(mydata_received.s06, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidRightLower_Min_Angle = map(constrain(mydata_received.s07, 0, 255), 0, 255, 0, 1023);
+  servo_eyebrowRight_Min_Angle     = map(constrain(mydata_received.s08, 0, 255), 0, 255, 0, 1023);
+  servo_eyebrowLeft_Min_Angle      = map(constrain(mydata_received.s09, 0, 255), 0, 255, 0, 1023);
+  servo_cheekRight_Min_Angle       = map(constrain(mydata_received.s10, 0, 255), 0, 255, 0, 1023);
+  servo_cheekLeft_Min_Angle        = map(constrain(mydata_received.s11, 0, 255), 0, 255, 0, 1023);
+  servo_upperLip_Min_Angle         = map(constrain(mydata_received.s12, 0, 255), 0, 255, 0, 1023);
+  servo_forheadRight_Min_Angle     = map(constrain(mydata_received.s13, 0, 255), 0, 255, 0, 1023);
+  servo_forheadLeft_Min_Angle      = map(constrain(mydata_received.s14, 0, 255), 0, 255, 0, 1023);
+  servo_Jaw_UpDown_Min_Angle       = map(constrain(mydata_received.s15, 0, 255), 0, 255, 0, 1023);
+  
+  servo_eyeLeftUD_Max_Angle        = map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+  servo_eyeLeftLR_Max_Angle        = map(constrain(mydata_received.x01, 0, 255), 0, 255, 0, 1023);
+  servo_eyeRightUD_Max_Angle       = map(constrain(mydata_received.x02, 0, 255), 0, 255, 0, 1023);
+  servo_eyeRightLR_Max_Angle       = map(constrain(mydata_received.x03, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidLeftUpper_Max_Angle  = map(constrain(mydata_received.x04, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidLeftLower_Max_Angle  = map(constrain(mydata_received.x05, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidRightUpper_Max_Angle = map(constrain(mydata_received.x06, 0, 255), 0, 255, 0, 1023);
+  servo_eyelidRightLower_Max_Angle = map(constrain(mydata_received.x07, 0, 255), 0, 255, 0, 1023);
+  servo_eyebrowRight_Max_Angle     = map(constrain(mydata_received.x08, 0, 255), 0, 255, 0, 1023);
+  servo_eyebrowLeft_Max_Angle      = map(constrain(mydata_received.x09, 0, 255), 0, 255, 0, 1023);
+  servo_cheekRight_Max_Angle       = map(constrain(mydata_received.x10, 0, 255), 0, 255, 0, 1023);
+  servo_cheekLeft_Max_Angle        = map(constrain(mydata_received.x11, 0, 255), 0, 255, 0, 1023);
+  servo_upperLip_Max_Angle         = map(constrain(mydata_received.x12, 0, 255), 0, 255, 0, 1023);
+  servo_forheadRight_Max_Angle     = map(constrain(mydata_received.x13, 0, 255), 0, 255, 0, 1023);
+  servo_forheadLeft_Max_Angle      = map(constrain(mydata_received.x14, 0, 255), 0, 255, 0, 1023);
+  servo_Jaw_UpDown_Max_Angle       = map(constrain(mydata_received.x15, 0, 255), 0, 255, 0, 1023);
+
+  servo_eyeLeftUD_Mid_Angle        =  round((servo_eyeLeftUD_Max_Angle         + servo_eyeLeftUD_Min_Angle       )/2);
+  servo_eyeLeftLR_Mid_Angle        =  round((servo_eyeLeftLR_Max_Angle         + servo_eyeLeftLR_Min_Angle       )/2);
+  servo_eyeRightUD_Mid_Angle       =  round((servo_eyeRightUD_Max_Angle        + servo_eyeRightUD_Min_Angle      )/2);
+  servo_eyeRightLR_Mid_Angle       =  round((servo_eyeRightLR_Max_Angle        + servo_eyeRightLR_Min_Angle      )/2);
+  servo_eyelidLeftUpper_Mid_Angle  =  round((servo_eyelidLeftUpper_Max_Angle   + servo_eyelidLeftUpper_Min_Angle )/2);
+  servo_eyelidLeftLower_Mid_Angle  =  round((servo_eyelidLeftLower_Max_Angle   + servo_eyelidLeftLower_Min_Angle )/2);
+  servo_eyelidRightUpper_Mid_Angle =  round((servo_eyelidRightUpper_Max_Angle  + servo_eyelidRightUpper_Min_Angle)/2);
+  servo_eyelidRightLower_Mid_Angle =  round((servo_eyelidRightLower_Max_Angle  + servo_eyelidRightLower_Min_Angle)/2);
+  servo_eyebrowRight_Mid_Angle     =  round((servo_eyebrowRight_Max_Angle      + servo_eyebrowRight_Min_Angle    )/2);
+  servo_eyebrowLeft_Mid_Angle      =  round((servo_eyebrowLeft_Max_Angle       + servo_eyebrowLeft_Min_Angle     )/2);
+  servo_cheekRight_Mid_Angle       =  round((servo_cheekRight_Max_Angle        + servo_cheekRight_Min_Angle      )/2);
+  servo_cheekLeft_Mid_Angle        =  round((servo_cheekLeft_Max_Angle         + servo_cheekLeft_Min_Angle       )/2);
+  servo_upperLip_Mid_Angle         =  round((servo_upperLip_Max_Angle          + servo_upperLip_Min_Angle        )/2);
+  servo_forheadRight_Mid_Angle     =  round((servo_forheadRight_Max_Angle      + servo_forheadRight_Min_Angle    )/2);
+  servo_forheadLeft_Mid_Angle      =  round((servo_forheadLeft_Max_Angle       + servo_forheadLeft_Min_Angle     )/2);
+  servo_Jaw_UpDown_Mid_Angle       =  round((servo_Jaw_UpDown_Max_Angle        + servo_Jaw_UpDown_Min_Angle      )/2);
+  */
+}
+
 void compute_from_SerialData_toAngleData()
 {
   servo_eyeLeftUD_Angle        = constrain(mydata_received.s00, 0, 255);
@@ -609,114 +778,3 @@ void reset_SerialDataChanged()
   s14_changed = false;
   s15_changed = false;
 }
-
-//----------------------------Random eyes movement-------------------------------------------------
-//----------------------------Random eyes movement-------------------------------------------------
-//----------------------------Random eyes movement-------------------------------------------------
-//----------------------------Random eyes movement-------------------------------------------------
-//----------------------------Random eyes movement-------------------------------------------------
-//----------------------------Random eyes movement-------------------------------------------------
-#ifdef RANDOM_EYES_MOVEMENT
-/*
-bool lookUpDown_write(byte servo_angle)   {return servoSender_write(servo_angle, lookUpDown   );}
-bool lookLeftRight_write(byte servo_angle){return servoSender_write(servo_angle, lookLeftRight);}
-bool lidLowerLeft_write(byte servo_angle) {return servoSender_write(servo_angle, lidLowerLeft );}
-bool lidUpperLeft_write( byte servo_angle){return servoSender_write(servo_angle, lidUpperLeft );}
-bool lidLowerRight_write(byte servo_angle){return servoSender_write(servo_angle, lidLowerRight);}
-bool lidUpperRight_write(byte servo_angle){return servoSender_write(servo_angle, lidUpperRight);}
-
-bool servoSender_write(byte servo_angle, byte servoGroup) {
-	uint8_t chanelNum1;
-	uint8_t chanelNum2;
-	
-	uint16_t  SERVO1_MIN;
-	uint16_t  SERVO1_MID;
-	uint16_t  SERVO1_MAX;
-	uint16_t  SERVO2_MIN;
-	uint16_t  SERVO2_MID;
-	uint16_t  SERVO2_MAX;
-	
-	if (servoGroup == lookUpDown) {
-		chanelNum1 = i01_head_eyeLeftUD;
-		chanelNum2 = i01_head_eyeRightUD;
-		
-		SERVO1_MIN = SERVO_MAX_eyeLeftUD;  //invertovane 255=hore
-		SERVO1_MID = SERVO_MID_eyeLeftUD;
-		SERVO1_MAX = SERVO_MIN_eyeLeftUD;  //0 = dole
-		SERVO2_MIN = SERVO_MIN_eyeRightUD;
-		SERVO2_MID = SERVO_MID_eyeRightUD;
-		SERVO2_MAX = SERVO_MAX_eyeRightUD;
-	} 
-	else if (servoGroup == lookLeftRight) {
-		chanelNum1 = i01_head_eyeLeftLR;
-		chanelNum2 = i01_head_eyeRightLR;
-		
- 		SERVO1_MIN = SERVO_MIN_eyeLeftLR;
-		SERVO1_MID = SERVO_MID_eyeLeftLR;
-		SERVO1_MAX = SERVO_MAX_eyeLeftLR;
-		SERVO2_MIN = SERVO_MIN_eyeRightLR;
-		SERVO2_MID = SERVO_MID_eyeRightLR;
-		SERVO2_MAX = SERVO_MAX_eyeRightLR;
-	}
-	else if (servoGroup == lidLowerLeft) {
-		chanelNum1 = i01_head_eyelidLeftLower;
-		chanelNum2 = 99;
-		
- 		SERVO1_MIN = SERVO_MAX_eyelidLeftLower;
-		SERVO1_MID = SERVO_MID_eyelidLeftLower;
-		SERVO1_MAX = SERVO_MIN_eyelidLeftLower;
-		SERVO2_MIN = 0;
-		SERVO2_MID = 0;
-		SERVO2_MAX = 0;
-	}
-	else if (servoGroup == lidUpperLeft) {
-		chanelNum1 = i01_head_eyelidLeftUpper;
-		chanelNum2 = 99;
-		
- 		SERVO1_MIN = SERVO_MIN_eyelidLeftUpper;
-		SERVO1_MID = SERVO_MID_eyelidLeftUpper;
-		SERVO1_MAX = SERVO_MAX_eyelidLeftUpper;
-		SERVO2_MIN = 0;
-		SERVO2_MID = 0;
-		SERVO2_MAX = 0;
-	}
-	else if (servoGroup == lidLowerRight) {
-		chanelNum1 = i01_head_eyelidRightLower;
-		chanelNum2 = 99;
-		
- 		SERVO1_MIN = SERVO_MIN_eyelidRightLower;
-		SERVO1_MID = SERVO_MID_eyelidRightLower;
-		SERVO1_MAX = SERVO_MAX_eyelidRightLower;
-		SERVO2_MIN = 0;
-		SERVO2_MID = 0;
-		SERVO2_MAX = 0;
-	}
-	else if (servoGroup == lidUpperRight) {
-		chanelNum1 = i01_head_eyelidRightUpper;
-		chanelNum2 = 99;
-		
- 		SERVO1_MIN = SERVO_MAX_eyelidRightUpper;//invertovane 255 =zatvorene
-		SERVO1_MID = SERVO_MID_eyelidRightUpper;
-		SERVO1_MAX = SERVO_MIN_eyelidRightUpper; //0 = otvorene
-		SERVO2_MIN = 0;
-		SERVO2_MID = 0;
-		SERVO2_MAX = 0;
-	} else {
-    return false;
-  }
-
-    servo_angle = constrain(servo_angle, 0, 255);
-	
-    uint16_t  servo1_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
-    uint16_t  servo2_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
-
-    if(chanelNum1<99) {
-      pwm.setPWM( chanelNum1, 0, servo1_Pwm);
-    }
-    if(chanelNum2<99) {
-      pwm.setPWM( chanelNum2, 0, servo2_Pwm);
-    }
-  return true;
-}
-*/
-#endif

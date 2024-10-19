@@ -31,10 +31,12 @@ class RandomEyesMovement{
 	
 	RandomEyesMovement();
   //Stream *theStream
-	void begin(Adafruit_PWMServoDriver *thePwm);
+	void begin(Adafruit_PWMServoDriver *thePwm, int[] );
 	
   //Stream *_stream;
   Adafruit_PWMServoDriver * pPwm;
+  //nt servoLimits[];
+  int localServoLimits[48];
 
   void moveEyesRandomly(unsigned long currentMillis);
 	void lookAtRandomDirection(bool generateRandomDirection, long minUpDown, long maxUpDown, String textToShow);

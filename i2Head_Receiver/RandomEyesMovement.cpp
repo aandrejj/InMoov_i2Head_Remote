@@ -5,9 +5,22 @@ RandomEyesMovement::RandomEyesMovement() {
 
 }
 
-void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm) {
+void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, int servo_Limits[]) {
+  Serial.println("REM:begin");
     pPwm = thePwm;
+    //servoLimits = servo_Limits;
+    for (int j =0;j<48; j++) {
+      localServoLimits[j] = servo_Limits[j];
+      Serial.print("s_Lim["); 
+      Serial.print(j); 
+      Serial.print("]="); 
+      Serial.print(servo_Limits[j]);
+      Serial.print(", "); 
+      Serial.println(localServoLimits[j]);
+      delay(100);
+    }
     randomSeed(analogRead(A7));
+    Serial.println("REM:begin end.");
 }
 
 void RandomEyesMovement::moveEyesRandomly(unsigned long currentMillis) {
@@ -99,31 +112,31 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
 		chanelNum1 = i01_head_eyeLeftUD;
 		chanelNum2 = i01_head_eyeRightUD;
 		
-		SERVO1_MIN = SERVO_MAX_eyeLeftUD;  //invertovane 255=hore
-		SERVO1_MID = SERVO_MID_eyeLeftUD;
-		SERVO1_MAX = SERVO_MIN_eyeLeftUD;  //0 = dole
-		SERVO2_MIN = SERVO_MIN_eyeRightUD;
-		SERVO2_MID = SERVO_MID_eyeRightUD;
-		SERVO2_MAX = SERVO_MAX_eyeRightUD;
+		SERVO1_MIN = localServoLimits[LBL_SRV_MAX_eyeLeftUD ];  //invertovane 255=hore
+		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyeLeftUD ];
+		SERVO1_MAX = localServoLimits[LBL_SRV_MIN_eyeLeftUD ];  //0 = dole
+		SERVO2_MIN = localServoLimits[LBL_SRV_MIN_eyeRightUD];
+		SERVO2_MID = localServoLimits[LBL_SRV_MID_eyeRightUD];
+		SERVO2_MAX = localServoLimits[LBL_SRV_MAX_eyeRightUD];
 	} 
 	else if (servoGroup == lookLeftRight) {
 		chanelNum1 = i01_head_eyeLeftLR;
 		chanelNum2 = i01_head_eyeRightLR;
 		
- 		SERVO1_MIN = SERVO_MIN_eyeLeftLR;
-		SERVO1_MID = SERVO_MID_eyeLeftLR;
-		SERVO1_MAX = SERVO_MAX_eyeLeftLR;
-		SERVO2_MIN = SERVO_MIN_eyeRightLR;
-		SERVO2_MID = SERVO_MID_eyeRightLR;
-		SERVO2_MAX = SERVO_MAX_eyeRightLR;
+ 		SERVO1_MIN = localServoLimits[LBL_SRV_MIN_eyeLeftLR ];
+		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyeLeftLR ];
+		SERVO1_MAX = localServoLimits[LBL_SRV_MAX_eyeLeftLR ];
+		SERVO2_MIN = localServoLimits[LBL_SRV_MIN_eyeRightLR];
+		SERVO2_MID = localServoLimits[LBL_SRV_MID_eyeRightLR];
+		SERVO2_MAX = localServoLimits[LBL_SRV_MAX_eyeRightLR];
 	}
 	else if (servoGroup == lidLowerLeft) {
 		chanelNum1 = i01_head_eyelidLeftLower;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = SERVO_MAX_eyelidLeftLower;
-		SERVO1_MID = SERVO_MID_eyelidLeftLower;
-		SERVO1_MAX = SERVO_MIN_eyelidLeftLower;
+ 		SERVO1_MIN = localServoLimits[LBL_SRV_MAX_eyelidLeftLower];
+		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidLeftLower];
+		SERVO1_MAX = localServoLimits[LBL_SRV_MIN_eyelidLeftLower];
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
@@ -132,9 +145,9 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
 		chanelNum1 = i01_head_eyelidLeftUpper;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = SERVO_MIN_eyelidLeftUpper;
-		SERVO1_MID = SERVO_MID_eyelidLeftUpper;
-		SERVO1_MAX = SERVO_MAX_eyelidLeftUpper;
+ 		SERVO1_MIN = localServoLimits[LBL_SRV_MIN_eyelidLeftUpper];
+		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidLeftUpper];
+		SERVO1_MAX = localServoLimits[LBL_SRV_MAX_eyelidLeftUpper];
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
@@ -143,9 +156,9 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
 		chanelNum1 = i01_head_eyelidRightLower;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = SERVO_MIN_eyelidRightLower;
-		SERVO1_MID = SERVO_MID_eyelidRightLower;
-		SERVO1_MAX = SERVO_MAX_eyelidRightLower;
+ 		SERVO1_MIN = localServoLimits[LBL_SRV_MIN_eyelidRightLower];
+		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidRightLower];
+		SERVO1_MAX = localServoLimits[LBL_SRV_MAX_eyelidRightLower];
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
@@ -154,9 +167,9 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
 		chanelNum1 = i01_head_eyelidRightUpper;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = SERVO_MAX_eyelidRightUpper;//invertovane 255 =zatvorene
-		SERVO1_MID = SERVO_MID_eyelidRightUpper;
-		SERVO1_MAX = SERVO_MIN_eyelidRightUpper; //0 = otvorene
+ 		SERVO1_MIN = localServoLimits[LBL_SRV_MAX_eyelidRightUpper];//invertovane 255 =zatvorene
+		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidRightUpper];
+		SERVO1_MAX = localServoLimits[LBL_SRV_MIN_eyelidRightUpper]; //0 = otvorene
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
