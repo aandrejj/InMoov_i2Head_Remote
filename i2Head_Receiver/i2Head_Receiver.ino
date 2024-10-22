@@ -7,7 +7,10 @@
 #define USE_DISPLAY_ST7735
 
 #ifdef USE_DISPLAY_ST7735
-  #include <ST7735.h>
+  #ifndef ST7735_h
+    #define ST7735_h
+    #include <ST7735.h>
+  #endif
 #endif
 
 #include <SPI.h>
@@ -19,6 +22,7 @@
 #include "i2Head_Receiver.h"
 #include "ServoConnectionToPwm.h"
 #include <math.h>
+#include "colors.h"
 
 #include "TxRx_dataStructures.h"
 
@@ -44,8 +48,8 @@
   #define DISP_RST   8
   #define DISP_SID   4
   #define DISP_SCLK  5
-  #define LEFT_ARROW_SIZE  2
-  #define LEFT_ARROW_STEP  2
+  //#define LEFT_ARROW_SIZE  2
+  //#define LEFT_ARROW_STEP  2 //moved to colors.h
 
     //           ST7735(uint8_t CS, uint8_t RS, uint8_t SID, uint8_t SCLK, uint8_t RST);
     ST7735 tft = ST7735(   DISP_CS,    DISP_RS,    DISP_SID,    DISP_SCLK,    DISP_RST); 
@@ -53,16 +57,6 @@
     //           ST7735(uint8_t CS, uint8_t RS, uint8_t RST);
   //ST7735 tft = ST7735(6, 7, 8);    
 
-// Color definitions
-//#define BLACK           0x0000
-//#define YELLOW          0xFFE0  
-//#define WHITE           0xFFFF
-const uint16_t BLACK = 0x0000;
-const uint16_t WHITE = 0xffff;
-const uint16_t BLUE = 0x001f;
-const uint16_t RED = 0xf800;
-const uint16_t YELLOW = 0xffe0;
-const uint16_t GREEN = 0x07e0;
 
 uint8_t spacing = 8;
 uint8_t yPos = 2;
@@ -156,7 +150,9 @@ void setup()
   delay(200);
 
   #ifdef RANDOM_EYES_MOVEMENT
-    randomEyesMovement.begin(&pwm, servoLimits);
+    uint8_t _left_arrow_step = LEFT_ARROW_STEP;
+    randomEyesMovement.begin(&pwm, &tft, servoLimits);
+    //randomEyesMovement.beginDisplay(&tft);
   #endif
 
   //konfiguracia NRF24 
@@ -330,7 +326,11 @@ Serial.println("setup: Write initial servo positions (350 to start with)  2.for 
 
         char numRead2[3];
         dtostrf(servoLimits[servoNum + 16], 3, 0, numRead2);
-        tft.drawString((((strlen(servo) + 2 + 4)) * 8), yPos, numRead2, YELLOW);
+        tft.drawString((((strlen(servo) + 2 + 3)) * 8), yPos, numRead2, YELLOW);
+
+        char numRead3[3];
+        dtostrf(servoLimits[servoNum + 32], 3, 0, numRead3);
+        tft.drawString((((strlen(servo) + 2 + 6)) * 8), yPos, numRead3, YELLOW);
 
       }
       //Serial.println("setup: y:"+String(yPos)+", numRead:"+String(numRead)+", count:"+String(count)+", i:"+String(i)+".");
