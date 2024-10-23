@@ -198,30 +198,34 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
     }
     if(chanelNum2<99) {
       pPwm->setPWM( chanelNum2, 0, servo2_Pwm);
-      writePulsesToDisplay(chanelNum1, SERVO2_MIN, servo2_Pwm, SERVO2_MAX);
+      writePulsesToDisplay(chanelNum2, SERVO2_MIN, servo2_Pwm, SERVO2_MAX);
     }
   return true;
 }
 
 void RandomEyesMovement::writePulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MIN, uint16_t servo_Pwm, uint16_t SERVO_MAX){
   
-  Serial.println("writePulsesToDisplay: ["+String(chanelNum)+"]->"+String(servo_Pwm));
-  uint8_t yPos = 2 + (chanelNum*((8+2) * LEFT_ARROW_STEP));
+  uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
+  uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
+  //Serial.print("writePulsesToDisplay:");// div_result = "+String(div_result)+", modulo = "+String(modulo));
+  uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*8)+4)) + (modulo*8);
+  Serial.println("writePulsesToDisplay: yPos="+String(yPos)+", ["+String(chanelNum)+"]->"+String(servo_Pwm));
 
-  //tft->fillRect((((5) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead[3];
-  //dtostrf(SERVO_MIN, 3, 0, numRead);
-  //tft->drawString(((5) * 8), yPos, numRead, YELLOW);
+  //tft->fillRect((((4) * 8)-2), yPos, 20, 8, BLACK);
+  //char numRead[4];
+  //dtostrf(SERVO_MIN, 4, 0, numRead);
+  //tft->drawString(((3) * 8), yPos, numRead, YELLOW);
 
-  tft->fillRect((((5 + 3) * 8)-2), yPos, 20, 8, BLACK);
-  char numRead2[3];
-  dtostrf(servo_Pwm, 3, 0, numRead2);
-  tft->drawString(((5 + 3) * 8), yPos, numRead2, YELLOW);
+  tft->fillRect((((4 + 4) * 8)-2), yPos, 20, 8, BLACK);
+  char numRead2[4];
+  dtostrf( (servo_Pwm) , 4, 0, numRead2);
+  //dtostrf(chanelNum, 4, 0, numRead2);
+  tft->drawString(((3 + 4) * 8), yPos, numRead2, YELLOW);
 
-  //tft->fillRect((((5 + 6) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead3[3];
-  //dtostrf(SERVO_MAX, 3, 0, numRead3);
-  //tft->drawString(((5 + 6) * 8), yPos, numRead3, YELLOW);
+  //tft->fillRect((((4 + 8) * 8)-2), yPos, 20, 8, BLACK);
+  //char numRead3[4];
+  //dtostrf(SERVO_MAX, 4, 0, numRead3);
+  //tft->drawString(((3 + 8) * 8), yPos, numRead3, YELLOW);
   //Serial.print(" loop_writePulsesToDisplay: yPos:"+String(yPos)+" , inChar:"+String(inChar)+". ");
 
   //Serial.println("RandomEyesMovement::writePulsesToDisplay End.");

@@ -62,7 +62,7 @@ uint8_t spacing = 8;
 uint8_t yPos = 2;
 uint8_t servoNum = 0;
 
-char servo[]="Srv";//"Servo ";
+char servo[]="S";//"Servo ";
 char colon[]=":";//": ";
 
 #endif
@@ -316,21 +316,21 @@ Serial.println("setup: Write initial servo positions (350 to start with)  2.for 
   for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
     for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
       if(LEFT_ARROW_STEP>2) {
-        char numRead[3];
-        dtostrf(servoLimits[servoNum], 3, 0, numRead);
+        char numRead[4];
+        dtostrf(servoLimits[servoNum], 4, 0, numRead);
         tft.drawString((((strlen(servo) + 2)) * 8), yPos, numRead, YELLOW);
       } else {
-        char numRead[3];
-        dtostrf(servoLimits[servoNum], 3, 0, numRead);
+        char numRead[4];
+        dtostrf(servoLimits[servoNum], 4, 0, numRead);
         tft.drawString((((strlen(servo) + 2)) * 8), yPos, numRead, YELLOW);
 
-        char numRead2[3];
-        dtostrf(servoLimits[servoNum + 16], 3, 0, numRead2);
-        tft.drawString((((strlen(servo) + 2 + 3)) * 8), yPos, numRead2, YELLOW);
+        char numRead2[4];
+        dtostrf(servoLimits[servoNum + 16], 4, 0, numRead2);
+        tft.drawString((((strlen(servo) + 2 + 4)) * 8), yPos, numRead2, YELLOW);
 
-        char numRead3[3];
-        dtostrf(servoLimits[servoNum + 32], 3, 0, numRead3);
-        tft.drawString((((strlen(servo) + 2 + 6)) * 8), yPos, numRead3, YELLOW);
+        char numRead3[4];
+        dtostrf(servoLimits[servoNum + 32], 4, 0, numRead3);
+        tft.drawString((((strlen(servo) + 2 + 8)) * 8), yPos, numRead3, YELLOW);
 
       }
       //Serial.println("setup: y:"+String(yPos)+", numRead:"+String(numRead)+", count:"+String(count)+", i:"+String(i)+".");
