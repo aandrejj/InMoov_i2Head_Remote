@@ -1,3 +1,8 @@
+#define LABEL_FORM_MIN 0
+#define LABEL_FORM_MID 1
+#define LABEL_FORM_MAX 2
+
+
 
 
 #define SERVO_MIN_eyeLeftUD         175 //hore  0 

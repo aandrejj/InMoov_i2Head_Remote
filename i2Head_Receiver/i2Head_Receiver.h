@@ -17,7 +17,6 @@ byte prev_ch[9]    = {   0,   0,   0,   0,   0,   0,   0,   0,  0};
 
 bool center_point_initialized[8] = {false, false, false, false, false, false, false, false};
 bool all_center_points_initialized = false;
-//bool center_points_initialized;
 
 byte ch_1_center = 0;
 byte ch_2_center = 0;
@@ -31,16 +30,7 @@ byte ch_8_center = 0;
 byte ch_center[8]    = {   0,   0,   0,   0,   0,   0,   0,   0};
 
 
-//byte ch_1_constrained = 0;
-//byte ch_2_constrained = 0;
-//byte ch_3_constrained = 0;
-//byte ch_4_constrained = 0;
-//byte ch_5_constrained = 0;
-//byte ch_6_constrained = 0;
-//byte ch_7_constrained = 0;
-//byte ch_8_constrained = 0;
 byte ch_constrained[8]        = {   0,   0,   0,   0,   0,   0,   0,   0};
-//byte prev_ch_constrained[8]        = {   0,   0,   0,   0,   0,   0,   0,   0};
 
 int servo_eyeLeftUD_Angle       ;
 int servo_eyeLeftLR_Angle       ;
@@ -93,7 +83,6 @@ int prev_servo_forheadRight_Pwm    ;
 int prev_servo_forheadLeft_Pwm     ;
 int prev_servo_Jaw_UpDown_Pwm      ;
 
-
 bool s00_changed = false;
 bool s01_changed = false;
 bool s02_changed = false;
@@ -110,6 +99,23 @@ bool s12_changed = false;
 bool s13_changed = false;
 bool s14_changed = false;
 bool s15_changed = false;
+
+bool x00_changed = false;
+bool x01_changed = false;
+bool x02_changed = false;
+bool x03_changed = false;
+bool x04_changed = false;
+bool x05_changed = false;
+bool x06_changed = false;
+bool x07_changed = false;
+bool x08_changed = false;
+bool x09_changed = false;
+bool x10_changed = false;
+bool x11_changed = false;
+bool x12_changed = false;
+bool x13_changed = false;
+bool x14_changed = false;
+bool x15_changed = false;
 
 //int servoLimits[17,3]={};
 int servoLimits[48]={
@@ -162,55 +168,3 @@ int servoLimits[48]={
    SERVO_MAX_forheadLeft     ,
    SERVO_MAX_Jaw_UpDown      
 };
-
-/*  int servo_eyeLeftUD_Min_Angle        = SERVO_MIN_eyeLeftUD       ;
-  int servo_eyeLeftLR_Min_Angle        = SERVO_MIN_eyeLeftLR       ;
-  int servo_eyeRightUD_Min_Angle       = SERVO_MIN_eyeRightUD      ;
-  int servo_eyeRightLR_Min_Angle       = SERVO_MIN_eyeRightLR      ;
-  int servo_eyelidLeftUpper_Min_Angle  = SERVO_MIN_eyelidLeftUpper ;
-  int servo_eyelidLeftLower_Min_Angle  = SERVO_MIN_eyelidLeftLower ;
-  int servo_eyelidRightUpper_Min_Angle = SERVO_MIN_eyelidRightUpper;
-  int servo_eyelidRightLower_Min_Angle = SERVO_MIN_eyelidRightLower;
-  int servo_eyebrowRight_Min_Angle     = SERVO_MIN_eyebrowRight    ;
-  int servo_eyebrowLeft_Min_Angle      = SERVO_MIN_eyebrowLeft     ;
-  int servo_cheekRight_Min_Angle       = SERVO_MIN_cheekRight      ;
-  int servo_cheekLeft_Min_Angle        = SERVO_MIN_cheekLeft       ;
-  int servo_upperLip_Min_Angle         = SERVO_MIN_upperLip        ;
-  int servo_forheadRight_Min_Angle     = SERVO_MIN_forheadRight    ;
-  int servo_forheadLeft_Min_Angle      = SERVO_MIN_forheadLeft     ;
-  int servo_Jaw_UpDown_Min_Angle       = SERVO_MIN_Jaw_UpDown      ;
-
-  int servo_eyeLeftUD_Max_Angle         = SERVO_MID_eyeLeftUD       ;
-  int servo_eyeLeftLR_Max_Angle         = SERVO_MID_eyeLeftLR       ;
-  int servo_eyeRightUD_Max_Angle        = SERVO_MID_eyeRightUD      ;
-  int servo_eyeRightLR_Max_Angle        = SERVO_MID_eyeRightLR      ;
-  int servo_eyelidLeftUpper_Max_Angle   = SERVO_MID_eyelidLeftUpper ;
-  int servo_eyelidLeftLower_Max_Angle   = SERVO_MID_eyelidLeftLower ;
-  int servo_eyelidRightUpper_Max_Angle  = SERVO_MID_eyelidRightUpper;
-  int servo_eyelidRightLower_Max_Angle  = SERVO_MID_eyelidRightLower;
-  int servo_eyebrowRight_Max_Angle      = SERVO_MID_eyebrowRight    ;
-  int servo_eyebrowLeft_Max_Angle       = SERVO_MID_eyebrowLeft     ;
-  int servo_cheekRight_Max_Angle        = SERVO_MID_cheekRight      ;
-  int servo_cheekLeft_Max_Angle         = SERVO_MID_cheekLeft       ;
-  int servo_upperLip_Max_Angle          = SERVO_MID_upperLip        ;
-  int servo_forheadRight_Max_Angle      = SERVO_MID_forheadRight    ;
-  int servo_forheadLeft_Max_Angle       = SERVO_MID_forheadLeft     ;
-  int servo_Jaw_UpDown_Max_Angle        = SERVO_MID_Jaw_UpDown      ;
-
-  int servo_eyeLeftUD_Mid_Angle         = SERVO_MAX_eyeLeftUD       ;
-  int servo_eyeLeftLR_Mid_Angle         = SERVO_MAX_eyeLeftLR       ;
-  int servo_eyeRightUD_Mid_Angle        = SERVO_MAX_eyeRightUD      ;
-  int servo_eyeRightLR_Mid_Angle        = SERVO_MAX_eyeRightLR      ;
-  int servo_eyelidLeftUpper_Mid_Angle   = SERVO_MAX_eyelidLeftUpper ;
-  int servo_eyelidLeftLower_Mid_Angle   = SERVO_MAX_eyelidLeftLower ;
-  int servo_eyelidRightUpper_Mid_Angle  = SERVO_MAX_eyelidRightUpper;
-  int servo_eyelidRightLower_Mid_Angle  = SERVO_MAX_eyelidRightLower;
-  int servo_eyebrowRight_Mid_Angle      = SERVO_MAX_eyebrowRight    ;
-  int servo_eyebrowLeft_Mid_Angle       = SERVO_MAX_eyebrowLeft     ;
-  int servo_cheekRight_Mid_Angle        = SERVO_MAX_cheekRight      ;
-  int servo_cheekLeft_Mid_Angle         = SERVO_MAX_cheekLeft       ;
-  int servo_upperLip_Mid_Angle          = SERVO_MAX_upperLip        ;
-  int servo_forheadRight_Mid_Angle      = SERVO_MAX_forheadRight    ;
-  int servo_forheadLeft_Mid_Angle       = SERVO_MAX_forheadLeft     ;
-  int servo_Jaw_UpDown_Mid_Angle        = SERVO_MAX_Jaw_UpDown      ;
-*/

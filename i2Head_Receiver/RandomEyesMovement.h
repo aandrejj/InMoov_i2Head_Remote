@@ -65,7 +65,11 @@ class RandomEyesMovement{
 	
 	bool servoSender_write(byte servo_angle, byte servoGroup);
  
-  void writePulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MIN, uint16_t servo_Pwm, uint16_t SERVO_MAX);
+  //void writePulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MIN, uint16_t servo_Pwm, uint16_t SERVO_MAX);
+  
+  void writeMINPulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MIN);
+  void writeMIDPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm);
+  void writeMAXPulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MAX);
 
 };
 #endif
