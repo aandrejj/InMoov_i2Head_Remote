@@ -3,7 +3,6 @@
 #define ch5ToLip_Scale  0.45 
 #define ch6ToLip_Scale  0.45 
 
-
 int ch_1 = 0;
 int ch_2 = 0;
 int ch_3 = 0;
@@ -117,8 +116,91 @@ bool x13_changed = false;
 bool x14_changed = false;
 bool x15_changed = false;
 
+bool SRV_MIN_eyeLeftUD_changed = false;
+bool SRV_MIN_eyeLeftLR_changed = false;
+bool SRV_MIN_eyeRightUD_changed = false;
+bool SRV_MIN_eyeRightLR_changed  = false;
+bool SRV_MIN_eyelidLeftUpper_changed = false; 
+bool SRV_MIN_eyelidLeftLower_changed = false; 
+bool SRV_MIN_eyelidRightUpper_changed = false;
+bool SRV_MIN_eyelidRightLower_changed = false;
+bool SRV_MIN_eyebrowRight_changed = false;
+bool SRV_MIN_eyebrowLeft_changed  = false;
+bool SRV_MIN_cheekRight_changed = false;
+bool SRV_MIN_cheekLeft_changed  = false;
+bool SRV_MIN_upperLip_changed     = false;
+bool SRV_MIN_forheadRight_changed = false;
+bool SRV_MIN_forheadLeft_changed = false;
+bool SRV_MIN_Jaw_UpDown_changed  = false;
+bool SRV_MAX_eyeLeftUD_changed = false;
+bool SRV_MAX_eyeLeftLR_changed = false;
+bool SRV_MAX_eyeRightUD_changed = false;
+bool SRV_MAX_eyeRightLR_changed  = false;
+bool SRV_MAX_eyelidLeftUpper_changed = false; 
+bool SRV_MAX_eyelidLeftLower_changed = false; 
+bool SRV_MAX_eyelidRightUpper_changed = false;
+bool SRV_MAX_eyelidRightLower_changed = false;
+bool SRV_MAX_eyebrowRight_changed = false;
+bool SRV_MAX_eyebrowLeft_changed  = false;
+bool SRV_MAX_cheekRight_changed = false;
+bool SRV_MAX_cheekLeft_changed  = false;
+bool SRV_MAX_upperLip_changed     = false;
+bool SRV_MAX_forheadRight_changed = false;
+bool SRV_MAX_forheadLeft_changed = false;
+bool SRV_MAX_Jaw_UpDown_changed  = false;
+
 //int servoLimits[17,3]={};
 int servoLimits[48]={
+  SERVO_MIN_eyeLeftUD        ,
+  SERVO_MIN_eyeLeftLR        ,
+  SERVO_MIN_eyeRightUD       ,
+  SERVO_MIN_eyeRightLR       ,
+  SERVO_MIN_eyelidLeftUpper  ,
+  SERVO_MIN_eyelidLeftLower  ,
+  SERVO_MIN_eyelidRightUpper ,
+  SERVO_MIN_eyelidRightLower ,
+  SERVO_MIN_eyebrowRight     ,
+  SERVO_MIN_eyebrowLeft      ,
+  SERVO_MIN_cheekRight       ,
+  SERVO_MIN_cheekLeft        ,
+  SERVO_MIN_upperLip         ,
+  SERVO_MIN_forheadRight     ,
+  SERVO_MIN_forheadLeft      ,
+  SERVO_MIN_Jaw_UpDown       ,
+   SERVO_MID_eyeLeftUD       ,
+   SERVO_MID_eyeLeftLR       ,
+   SERVO_MID_eyeRightUD      ,
+   SERVO_MID_eyeRightLR      ,
+   SERVO_MID_eyelidLeftUpper ,
+   SERVO_MID_eyelidLeftLower ,
+   SERVO_MID_eyelidRightUpper,
+   SERVO_MID_eyelidRightLower,
+   SERVO_MID_eyebrowRight    ,
+   SERVO_MID_eyebrowLeft     ,
+   SERVO_MID_cheekRight      ,
+   SERVO_MID_cheekLeft       ,
+   SERVO_MID_upperLip        ,
+   SERVO_MID_forheadRight    ,
+   SERVO_MID_forheadLeft     ,
+   SERVO_MID_Jaw_UpDown      ,
+   SERVO_MAX_eyeLeftUD       ,
+   SERVO_MAX_eyeLeftLR       ,
+   SERVO_MAX_eyeRightUD      ,
+   SERVO_MAX_eyeRightLR      ,
+   SERVO_MAX_eyelidLeftUpper ,
+   SERVO_MAX_eyelidLeftLower ,
+   SERVO_MAX_eyelidRightUpper,
+   SERVO_MAX_eyelidRightLower,
+   SERVO_MAX_eyebrowRight    ,
+   SERVO_MAX_eyebrowLeft     ,
+   SERVO_MAX_cheekRight      ,
+   SERVO_MAX_cheekLeft       ,
+   SERVO_MAX_upperLip        ,
+   SERVO_MAX_forheadRight    ,
+   SERVO_MAX_forheadLeft     ,
+   SERVO_MAX_Jaw_UpDown      
+};
+int prevServoLimits[48]={
   SERVO_MIN_eyeLeftUD        ,
   SERVO_MIN_eyeLeftLR        ,
   SERVO_MIN_eyeRightUD       ,
