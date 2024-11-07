@@ -241,6 +241,7 @@ void loop()
               //randomEyesMovement.moveEyesRandomly(currentMillis);
             #endif
           }
+          reset_RfSerialData();
       }
     } else  if(currentMillis - previousSafetyMillis > 1000) {         // safeties
       #ifdef RANDOM_EYES_MOVEMENT
@@ -821,6 +822,14 @@ bool RfSerial_Data_changed() {
     }
   return data_changed;
 }
+
+void reset_RfSerialData() {
+  for (short i=0; i<=47; i++) {
+    prevServoLimits[i] = servoLimits[i];
+  }
+}
+
+
 
 bool serialData_changed() {
   bool data_changed = false;
