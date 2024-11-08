@@ -7,13 +7,13 @@ struct RX_DATA_STRUCTURE{
     byte servoSet;
 
     byte s1min;
-    byte s1mid;
-    byte s1curr;
+    //byte s1mid;
+    //byte s1curr;
     byte s1max;
 
     byte s2min;
-    byte s2mid;
-    byte s2curr;
+    //byte s2mid;
+    //byte s2curr;
     byte s2max;
 
     /*
