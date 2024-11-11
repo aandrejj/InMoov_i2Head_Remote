@@ -674,6 +674,7 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
         {
             data_changed = true; 
             //SRV_MIN_eyeLeftUD_changed = true; 
+            Serial.print("servoLimits["+String(servoIndex)+"] = "+ String(servoLimits[servoIndex])+" ");
             if(form_label_Min_Mid_Max == LABEL_FORM_MIN) {
               writeMINPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
             }
@@ -684,7 +685,6 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
               writeMIDPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
             }
             //writeOneFieldToDisplay(displayChanelNumber, form_label_Min_Mid_Max, servoLimits[servoIndex]); 
-            Serial.print("servoLimits["+String(servoIndex)+"] = "+ String(servoLimits[servoIndex])+" ");
         }
 
   return data_changed;
