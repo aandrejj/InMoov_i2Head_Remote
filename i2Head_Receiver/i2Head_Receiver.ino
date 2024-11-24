@@ -6,6 +6,9 @@
 
 #define USE_DISPLAY_ST7735
 
+#include "version_num.h"
+#include "build_defs.h"
+
 #ifdef USE_DISPLAY_ST7735
   #ifndef ST7735_h
     #define ST7735_h
@@ -32,6 +35,32 @@
   #include "RandomEyesMovement.h"
 #endif
 
+// want something like: 1.4.1432.2234
+
+const unsigned char completeVersion[] =
+{
+    VERSION_MAJOR_INIT,
+    '.',
+    VERSION_MINOR_INIT,
+    //'-', 'V', '-',
+    '.',
+    BUILD_YEAR_CH0, BUILD_YEAR_CH1, BUILD_YEAR_CH2, BUILD_YEAR_CH3,
+    //'-',
+    BUILD_MONTH_CH0, BUILD_MONTH_CH1,
+    //'-',
+    BUILD_DAY_CH0, BUILD_DAY_CH1,
+    //'T',
+      '.',
+    BUILD_HOUR_CH0, BUILD_HOUR_CH1,
+    //':',
+    BUILD_MIN_CH0, BUILD_MIN_CH1,
+    //':',
+    //BUILD_SEC_CH0, BUILD_SEC_CH1,
+    '\0'
+};
+
+//#include <stdio.h>
+
 #define HIGHSPEED 
 
 #ifdef HIGHSPEED
@@ -43,11 +72,11 @@
 #ifdef USE_DISPLAY_ST7735
 
   //#define OLED_RESET 4
-  #define DISP_CS    6
-  #define DISP_RS    7
-  #define DISP_RST   8
-  #define DISP_SID   4
-  #define DISP_SCLK  5
+  #define DISP_CS    6 //CS   -CS
+  #define DISP_RS    7 //A0   -RS
+  #define DISP_RST   8 //RESET-RST
+  #define DISP_SID   4 //SDA  -SDA
+  #define DISP_SCLK  5 //SCK  -SCK
   //#define LEFT_ARROW_SIZE  2
   //#define LEFT_ARROW_STEP  2 //moved to colors.h
 
@@ -77,6 +106,34 @@ int noDataCount = 0;
 #endif
 
 const uint64_t pipeIn = 0x0022;   //Tento isty kod musi mať aj primač
+/*
+Arduion RF NANO   pinout
+CE   D10
+CSN  D09
+SCK  D13
+MOSI D11
+MISO D12
+ from: RF-Nano-Schematic.pdf
+
+Arduion MEGA  NRF24L01 PA/LNA   pinout
+CE   D10
+CSN  D09
+SCK  D52
+MOSI D51
+MISO D50
+
+ SCK, MOSI, MISO and CS (or SS) pins. Those pins are 52, 51, 50 and 53 (defalut) on a Mega.
+from: https://forum.arduino.cc/t/pin-connection/613444/4  
+
+Hardware SPI Pins:
+ * Arduino Uno   SCK=13, SDA=11
+ * Arduino Nano  SCK=13, SDA=11
+ * Arduino Due   SCK=76, SDA=75
+ * Arduino Mega  SCK=52, SDA=51
+
+*/
+
+
 RF24 radio(10,9);  //zapojenie CE a CSN pinov
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
@@ -125,8 +182,11 @@ void setup()
   while (!Serial) {
     ;  // wait for serial port to connect. Needed for native USB port only
   }
-  Serial.print("Sketch:   ");   Serial.println(__FILE__);
+  Serial.print("  Sketch: ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
+  Serial.print(" Version: ");   Serial.write(completeVersion, strlen(completeVersion));
+  Serial.println("");
+  //printf("%s\n", completeVersion);
 	
   #ifdef USE_DISPLAY_ST7735
     Serial.println("setup: tft.initR()...");
@@ -144,7 +204,7 @@ void setup()
     prepareServoForm();
   #endif
 
-  Serial.println("setup:: @1 Servo Initialization started");
+  Serial.println("setup: @1 Servo Initialization started");
   pwm.begin(); //pwm.begin(0);   0 = driver_ID
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
 	Serial.println("setup: @2 Servos on PCA9685  attached");
@@ -245,7 +305,7 @@ void loop()
       }
     } else  if(currentMillis - previousSafetyMillis > 1000) {         // safeties
       #ifdef RANDOM_EYES_MOVEMENT
-        randomEyesMovement.moveEyesRandomly(currentMillis);
+        //randomEyesMovement.moveEyesRandomly(currentMillis);
       #endif
     }
     //Serial.println(" @1.2 end");
@@ -287,9 +347,9 @@ void loop()
 //------------------------------end of  loop()----------------------------------
 //------------------------------end of  loop()----------------------------------
 //------------------------------end of  loop()----------------------------------
-
+String i_str ="";
 void prepareServoForm(){
-  Serial.println("setup: Write servo numbers 1.for {for{}} start");
+  Serial.println("prepareServoForm: Write servo numbers 1.for {for{}} start");
 //Write servo numbers 
   for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
     for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
@@ -306,9 +366,9 @@ void prepareServoForm(){
       }
       yPos += (2*LEFT_ARROW_STEP); //8;
     }
-Serial.println("setup: 1.for {for{}} done");
+Serial.println("sprepareServoForm: 1.for {for{}} done");
 
-Serial.println("setup: Write initial servo positions (350 to start with)  2.for {for{}} started");
+Serial.println("prepareServoForm: Write initial servo positions (350 to start with)  2.for {for{}} started");
 //Write initial servo positions (350 to start with)  
   servoNum = 0;
   yPos = 2;
@@ -332,13 +392,14 @@ Serial.println("setup: Write initial servo positions (350 to start with)  2.for 
         tft.drawString((((strlen(servo) + 2 + 8)) * 8), yPos, numRead3, YELLOW);
 
       }
-      Serial.println("setup: y:"+String(yPos)+", count:"+String(count)+", i:"+String(i)+".");
+      //Serial.print("prepareServoForm: y:"+String(yPos)+", count:"+String(count)+", i:"+String(i)+".");
+      i_str = String(i);
       servoNum ++;
       yPos += spacing;    
       }
     yPos += (2*LEFT_ARROW_STEP); //8;
   }
-  Serial.println("setup: 2.for {for{}} done");
+  Serial.println("prepareServoForm: 2.for {for{}} done");
 
    tft.drawString((128-(LEFT_ARROW_SIZE*8)), 3, "<", WHITE, LEFT_ARROW_SIZE);
 }

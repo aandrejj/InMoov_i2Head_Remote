@@ -14,16 +14,16 @@ void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, 
     //servoLimits = servo_Limits;
     for (int j =0;j<48; j++) {
       localServoLimits[j] = servo_Limits[j];
-      Serial.print("s_Lim["); 
-      Serial.print(j); 
-      Serial.print("]="); 
-      Serial.print(servo_Limits[j]);
-      Serial.print(", "); 
-      Serial.println(localServoLimits[j]);
+      //Serial.print("s_Lim["); 
+      //Serial.print(j); 
+      //Serial.print("]="); 
+      //Serial.print(servo_Limits[j]);
+      //Serial.print(", "); 
+      //Serial.println(localServoLimits[j]);
       //delay(100);
     }
     randomSeed(analogRead(A7));
-    Serial.println("REM:begin end.");
+    Serial.println("REM:End of begin().");
 }
 /*
 	void RandomEyesMovement::beginDisplay(ST7735 *theTft ) {
