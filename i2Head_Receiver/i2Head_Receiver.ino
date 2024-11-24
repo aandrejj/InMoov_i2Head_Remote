@@ -305,7 +305,7 @@ void loop()
       }
     } else  if(currentMillis - previousSafetyMillis > 1000) {         // safeties
       #ifdef RANDOM_EYES_MOVEMENT
-        //randomEyesMovement.moveEyesRandomly(currentMillis);
+        randomEyesMovement.moveEyesRandomly(currentMillis);
       #endif
     }
     //Serial.println(" @1.2 end");
