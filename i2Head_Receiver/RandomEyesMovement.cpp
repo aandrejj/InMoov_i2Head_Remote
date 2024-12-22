@@ -34,7 +34,7 @@ void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, 
 */
 
 void RandomEyesMovement::moveEyesRandomly(unsigned long currentMillis) {
-  Serial.print("REM: Start");
+  Serial.print("REM: Start ");
   REM_interval = random(20,2000);
   //Serial.print(", REM_interval = "+String(REM_interval));
   REM_pose = random (0,3);

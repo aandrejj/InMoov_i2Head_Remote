@@ -149,6 +149,17 @@ bool SRV_MAX_forheadRight_changed = false;
 bool SRV_MAX_forheadLeft_changed = false;
 bool SRV_MAX_Jaw_UpDown_changed  = false;
 
+bool servoPositionChanged[48]={
+  false, false, false, false, false, false, false, false, 
+  false, false, false, false, false, false, false, false, 
+
+  false, false, false, false, false, false, false, false, 
+  false, false, false, false, false, false, false, false, 
+
+  false, false, false, false, false, false, false, false, 
+  false, false, false, false, false, false, false, false
+};
+
 //int servoLimits[17,3]={};
 int servoLimits[48]={
   SERVO_MIN_eyeLeftUD        ,

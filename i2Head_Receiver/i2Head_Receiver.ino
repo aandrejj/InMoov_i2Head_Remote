@@ -35,7 +35,7 @@
   #include "RandomEyesMovement.h"
 #endif
 
-// want something like: 1.4.1432.2234
+// want something like: 0.2.20241124.1502
 
 const unsigned char completeVersion[] =
 {
@@ -134,7 +134,7 @@ Hardware SPI Pins:
 */
 
 
-RF24 radio(10,9);  //zapojenie CE a CSN pinov
+RF24 radio(10,9);  //zapojenie CE a CSN pinov   //RF24(rf24_gpio_pin_t _cepin, rf24_gpio_pin_t _cspin, uint32_t _spi_speed = RF24_SPI_SPEED);
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 
@@ -159,14 +159,14 @@ void resetData()
 {
 
   mydata_received.s1min = 0;
-  //mydata_received.s1mid = 127;
-  //mydata_received.s1curr= 127;
+  mydata_received.s1mid = 127;
+  mydata_received.s1curr= 127;
   mydata_received.s1max = 255;
 
-  mydata_received.s2min = 0;
+  //mydata_received.s2min = 0;
   //mydata_received.s2mid = 127;
   //mydata_received.s2curr= 127;
-  mydata_received.s2max = 255;
+  //mydata_received.s2max = 255;
 
   mydata_received.devType =  0; // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 2 = MinMaxServoConfig (min max for 2 chanels)
   //mydata_received.flags = 0;
@@ -223,10 +223,17 @@ void setup()
   #ifdef USE_RF_REMOTE
   	Serial.println("setup: @3 radio.begin()..");
     radio.begin();
-    radio.setAutoAck(false);
-    radio.setDataRate(RF24_250KBPS);  
+    //radio.setAutoAck(false);
+    radio.setAutoAck(true);
+    
+    //Serial.println("setup: radio.setDataRate(RF24_250KBPS)");
+    //radio.setDataRate(RF24_250KBPS);
+    Serial.println("setup: radio.openReadingPipe(1,pipeIn)");
     radio.openReadingPipe(1,pipeIn);
     
+    Serial.println("setup: radio.setPALevel(RF24_PA_MIN)");
+    radio.setPALevel(RF24_PA_MIN);
+   
     radio.startListening();
     Serial.println("setup: @4 rf-radio started");
   #endif
@@ -421,6 +428,10 @@ bool RfData_changed(){
 
 void compute_from_SerialData_toMinMax()
 {
+  servoLimits[ mydata_received.servoSet           ] = map(constrain(mydata_received.s1min, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.s1curr, 0, 255), 0, 255, mydata_received.s1min, mydata_received.s1max);
+  servoLimits[(mydata_received.servoSet + 16 )    ] = map(constrain(mydata_received.s1mid, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+  servoLimits[(mydata_received.servoSet + 16 + 16)] = map(constrain(mydata_received.s1max, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+  /*
   switch (mydata_received.servoSet) {
     case 0: 
         servoLimits[LBL_SRV_MIN_eyeLeftUD        ] = map(constrain(mydata_received.s1min, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.s1curr, 0, 255), 0, 255, mydata_received.s1min, mydata_received.s1max);
@@ -455,7 +466,8 @@ void compute_from_SerialData_toMinMax()
         servoLimits[LBL_SRV_MIN_Jaw_UpDown       ] = map(constrain(mydata_received.s2min, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.s15, 0, 255), 0, 255, 0, 1023);
       break;
   }
-
+  */
+  /*
   switch (mydata_received.servoSet) {
     case 0: 
         servoLimits[LBL_SRV_MAX_eyeLeftUD        ] = map(constrain(mydata_received.s1max, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
@@ -490,7 +502,8 @@ void compute_from_SerialData_toMinMax()
         servoLimits[LBL_SRV_MAX_Jaw_UpDown       ] = map(constrain(mydata_received.s2max, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x15, 0, 255), 0, 255, 0, 1023);
       break;
     }
-
+  */
+  /*
   switch (mydata_received.servoSet) {
     case 0: 
         servoLimits[LBL_SRV_MID_eyeLeftUD        ] =  round((servoLimits[LBL_SRV_MAX_eyeLeftUD         ] + servoLimits[LBL_SRV_MIN_eyeLeftUD       ])/2);
@@ -525,6 +538,7 @@ void compute_from_SerialData_toMinMax()
         servoLimits[LBL_SRV_MID_Jaw_UpDown       ] =  round((servoLimits[LBL_SRV_MAX_Jaw_UpDown        ] + servoLimits[LBL_SRV_MIN_Jaw_UpDown      ])/2);
       break;
   }
+  */
 }
 
 void compute_from_SerialData_toAngleData()
@@ -754,6 +768,48 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
 bool RfSerial_Data_changed() {
   bool data_changed = false;
 
+  #ifdef USE_RF_SERIAL_D_CH_INNER_PART
+    servoPositionChanged[mydata_received.servoSet     ] = RfSerial_Data_Changed_innerPart(mydata_received.servoSet,      0, mydata_received.s1min, LABEL_FORM_MIN);
+    servoPositionChanged[(mydata_received.servoSet+16)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+16), 0, mydata_received.s1mid, LABEL_FORM_MID);
+    servoPositionChanged[(mydata_received.servoSet+32)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+32), 0, mydata_received.s1max, LABEL_FORM_MAX);
+
+    if(servoPositionChanged[mydata_received.servoSet   ] == true ||
+       servoPositionChanged[mydata_received.servoSet+16] == true ||
+       servoPositionChanged[mydata_received.servoSet+32] == true ) 
+    {
+      data_changed = true; 
+    }
+
+  #else
+    servoLimits[mydata_received.servoSet] = map(constrain(mydata_received.s1min, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.s00, 0, 255), 0, 255, mydata_received.s1min, mydata_received.s1max);
+    if(abs(servoLimits[mydata_received.servoSet] - prevServoLimits[mydata_received.servoSet])>2) {
+      data_changed = true; 
+      //SRV_MIN_eyeLeftUD_changed = true; 
+      servoPositionChanged[mydata_received.servoSet] = true; 
+      writeMINPulsesToDisplay( 0, servoLimits[mydata_received.servoSet]); 
+      Serial.print("MIN.servoLimits["+String(mydata_received.servoSet)+"] = "+ String(servoLimits[mydata_received.servoSet])+" ");
+    }
+
+    servoLimits[(mydata_received.servoSet+16)] = map(constrain(mydata_received.s1mid, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+    if(servoLimits[(mydata_received.servoSet+16)] != prevServoLimits[(mydata_received.servoSet+16)]) {
+      data_changed = true; 
+      //SRV_MAX_eyeLeftUD_changed = true; 
+      servoPositionChanged[(mydata_received.servoSet+16)] = true;
+      writeMAXPulsesToDisplay( 0, servoLimits[(mydata_received.servoSet+16)]); 
+      Serial.print("MID.servoLimits["+String((mydata_received.servoSet+16))+"] = " + String(servoLimits[(mydata_received.servoSet+16)])+" ");
+    }
+
+    servoLimits[(mydata_received.servoSet+32)] = map(constrain(mydata_received.s1max, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+    if(servoLimits[(mydata_received.servoSet+32)] != prevServoLimits[(mydata_received.servoSet+32)]) {
+      data_changed = true; 
+      //SRV_MAX_eyeLeftUD_changed = true; 
+      servoPositionChanged[(mydata_received.servoSet+32)] = true;
+      writeMAXPulsesToDisplay( 0, servoLimits[(mydata_received.servoSet+32)]); 
+      Serial.print("MAX.servoLimits["+String((mydata_received.servoSet+32))+"] = " + String(servoLimits[(mydata_received.servoSet+32)])+" ");
+    }
+  #endif
+
+  /*  
   switch (mydata_received.servoSet) {
     case 0:
       #ifdef USE_RF_SERIAL_D_CH_INNER_PART
@@ -844,7 +900,8 @@ bool RfSerial_Data_changed() {
       #endif
       break;
   }
-
+  */
+  /*
   switch (mydata_received.servoSet) {
     case 0: 
       #ifdef USE_RF_SERIAL_D_CH_INNER_PART
@@ -935,7 +992,8 @@ bool RfSerial_Data_changed() {
       #endif
       break;
     }
-
+  */
+  /*
     if(
         (SRV_MIN_eyeLeftUD_changed == true ) || 
         (SRV_MIN_eyeLeftLR_changed == true        ) || 
@@ -972,8 +1030,8 @@ bool RfSerial_Data_changed() {
       {
         data_changed = true;
       }
-
-
+  */
+  /*
   switch (mydata_received.servoSet) {
     case 0: 
         servoLimits[LBL_SRV_MID_eyeLeftUD        ] =  round((servoLimits[LBL_SRV_MAX_eyeLeftUD         ] + servoLimits[LBL_SRV_MIN_eyeLeftUD       ])/2);
@@ -1008,6 +1066,7 @@ bool RfSerial_Data_changed() {
         servoLimits[LBL_SRV_MID_Jaw_UpDown       ] =  round((servoLimits[LBL_SRV_MAX_Jaw_UpDown        ] + servoLimits[LBL_SRV_MIN_Jaw_UpDown      ])/2);
       break;
   }
+  */
 
   if(data_changed == true){
       //Serial.println(" my_serial_data_received_changed ----");
