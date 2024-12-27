@@ -12,7 +12,7 @@ const uint16_t RED = 0xf800;
 const uint16_t YELLOW = 0xffe0;
 const uint16_t GREEN = 0x07e0;
 
-  #define LEFT_ARROW_SIZE  2
-  #define LEFT_ARROW_STEP  2
+  #define LEFT_ARROW_SIZE  1
+  #define LEFT_ARROW_STEP  1
 
 #endif
