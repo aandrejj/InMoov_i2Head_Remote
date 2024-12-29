@@ -87,7 +87,7 @@ void WritePulsesToDisplay::writeOneFieldToDisplay (uint8_t chanelNum,uint8_t for
 
 void WritePulsesToDisplay::writeOneFieldToDisplay_innerPart (uint8_t xPos, uint16_t _chr_point_shift_x, uint8_t yPos, uint16_t _char_height_y, uint16_t form_label_Min_Mid_Max, uint16_t servo_Pwm,uint16_t chanelNum, bool showDebug)
 {
-  
+  /*
   if(showDebug == true) {
     Serial.print("writeOneFieldToDisplay_innerPart: ");
     Serial.print("xPos:"+String(xPos)+", ");
@@ -99,7 +99,7 @@ void WritePulsesToDisplay::writeOneFieldToDisplay_innerPart (uint8_t xPos, uint1
     Serial.print("chanelNum:"+String(chanelNum)+", ");
     Serial.println("");
   }
-  
+  */
   tft.fillRect((xPos + _chr_point_shift_x), yPos, (3*char_width_x)-_chr_point_shift_x, _char_height_y, BLACK);
   /*
   if(showDebug == true) {

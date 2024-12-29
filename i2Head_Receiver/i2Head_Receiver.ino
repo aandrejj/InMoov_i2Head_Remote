@@ -33,7 +33,7 @@
 
 #include "TxRx_dataStructures.h"
 
-//#include "ServoMinMidMaxValues.h"
+#include "ServoMinMidMaxValues.h"
 
 #define RANDOM_EYES_MOVEMENT
 
@@ -124,7 +124,7 @@ Hardware SPI Pins:
 RF24 radio(10,9);  //zapojenie CE a CSN pinov   //RF24(rf24_gpio_pin_t _cepin, rf24_gpio_pin_t _cspin, uint32_t _spi_speed = RF24_SPI_SPEED);
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
-//ServoMinMidMaxValues servoMinMidMaxValues;
+ServoMinMidMaxValues servoMinMidMaxValues;
 
 unsigned long previousMillis = 0;
 const long interval = 20;
@@ -185,7 +185,7 @@ void setup()
 
   //printf("%s\n", completeVersion);
 	
-    writePulsesToDisplay.begin();//&tft);//, servoLimits);
+    writePulsesToDisplay.begin();//&tft);//, servoMinMidMaxValues.servoLimits);
     previousServoSet  = 0;
     previousFireBtn1  = 1;
     previousSwitchPos = 1;
@@ -202,7 +202,7 @@ void setup()
 
   #ifdef RANDOM_EYES_MOVEMENT
     uint8_t _left_arrow_step = LEFT_ARROW_STEP;
-    //randomEyesMovement.begin(&pwm, &tft, servoLimits);
+    randomEyesMovement.begin(&pwm, &writePulsesToDisplay, &servoMinMidMaxValues);
     ////randomEyesMovement.beginDisplay(&tft);
   #endif
 
@@ -299,11 +299,20 @@ void loop()
             //compute_from_SerialData_toMinMax();
             #ifdef RANDOM_EYES_MOVEMENT
             if(mydata_received.fireBtn1 == 0) {
-              Serial.println("loop: fireBtn pressed -> starting randomEyesMovement.moveEyesRandomly...");
-              randomEyesMovement.moveEyesRandomly(currentMillis,"With RF");
+              if(mydata_received.switchPos == 2) {
+                Serial.println("loop: fireBtn pressed -> IGNORED (randomEyesMovement is On by switch).");
+              } else {
+                Serial.println("loop: fireBtn pressed -> starting randomEyesMovement.moveEyesRandomly...");
+                randomEyesMovement.moveEyesRandomly(currentMillis,"With RF btn");
+              }
             }
             #endif
-          }
+          } else {
+            if(mydata_received.switchPos == 2) {
+              //Serial.println("loop: switchPos ==2 -> starting randomEyesMovement.moveEyesRandomly...");
+              randomEyesMovement.moveEyesRandomly(currentMillis,"With RF");
+            }
+          } 
           //reset_RfSerialData();
       }
     } else  if(currentMillis - previousSafetyMillis > 1000) {         // safeties
@@ -387,22 +396,13 @@ Serial.println("prepareServoForm: Write initial servo positions (350 to start wi
   //servo ="S".....
   for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
     for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
-        //char numRead[4];
-        //dtostrf(servoLimits[servoNum], 4, 0, numRead);
-        //tft.drawString((((strlen(servo) + 2)) * 8), yPos, numRead, YELLOW);
-        writePulsesToDisplay.writeMINPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum]);//, true);
+        writePulsesToDisplay.writeMINPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum]);//, true);
 
-        //char numRead2[4];
-        //dtostrf(servoLimits[servoNum + 16], 4, 0, numRead2);
-        //tft.drawString((((strlen(servo) + 2 + 4)) * 8), yPos, numRead2, YELLOW);
-        writePulsesToDisplay.writeMIDPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+16]);//, true);
+        writePulsesToDisplay.writeMIDPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum+16]);//, true);
 
-        writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+48], true);
+        writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum+48], true);
 
-        //char numRead3[4];
-        //dtostrf(servoLimits[servoNum + 32], 4, 0, numRead3);
-        //tft.drawString((((strlen(servo) + 2 + 8)) * 8), yPos, numRead3, YELLOW);
-        writePulsesToDisplay.writeMAXPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+32]);//, true);
+        writePulsesToDisplay.writeMAXPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum+32]);//, true);
         //Serial.print("prepareServoForm: y:"+String(yPos)+", count:"+String(count)+", i:"+String(i)+".");
       i_str = String(i);
       servoNum ++;
@@ -433,9 +433,9 @@ bool RfData_changed(){
 
 void compute_from_SerialData_toMinMax()
 {
-  servoLimits[ mydata_received.servoSet           ] = map(constrain(mydata_received.s1min, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.s1curr, 0, 255), 0, 255, mydata_received.s1min, mydata_received.s1max);
-  servoLimits[(mydata_received.servoSet + 16 )    ] = map(constrain(mydata_received.s1mid, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
-  servoLimits[(mydata_received.servoSet + 16 + 16)] = map(constrain(mydata_received.s1max, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+  servoMinMidMaxValues.servoLimits[ mydata_received.servoSet           ] = map(constrain(mydata_received.s1min, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.s1curr, 0, 255), 0, 255, mydata_received.s1min, mydata_received.s1max);
+  servoMinMidMaxValues.servoLimits[(mydata_received.servoSet + 16 )    ] = map(constrain(mydata_received.s1mid, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
+  servoMinMidMaxValues.servoLimits[(mydata_received.servoSet + 16 + 16)] = map(constrain(mydata_received.s1max, 0, 255), 0, 255, 0, 1023);//map(constrain(mydata_received.x00, 0, 255), 0, 255, 0, 1023);
 }
 
 void compute_from_SerialData_toAngleData()
@@ -660,40 +660,40 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
   bool data_changed = false;
 
   #ifdef SERVOPULSE_CONVERSION_NEEDED
-    servoLimits[servoIndex] = map(constrain(mydata_received_value, 0, 255), 0, 255, 0, 1023);
+    servoMinMidMaxValues.servoLimits[servoIndex] = map(constrain(mydata_received_value, 0, 255), 0, 255, 0, 1023);
   #else
-    servoLimits[servoIndex] = constrain(mydata_received_value, 0, 1023);
+    servoMinMidMaxValues.servoLimits[servoIndex] = constrain(mydata_received_value, 0, 1023);
   #endif
 
   //map(constrain(mydata_received.s1curr, 0, 255), 0, 255, mydata_received.s1min, mydata_received.s1max);
-  if(servoLimits[servoIndex] != prevServoLimits[servoIndex])
+  if(servoMinMidMaxValues.servoLimits[servoIndex] != servoMinMidMaxValues.prevServoLimits[servoIndex])
   {
     data_changed = true; 
-    //if(abs(servoLimits[servoIndex] - prevServoLimits[servoIndex])>=2)
+    //if(abs(servoMinMidMaxValues.servoLimits[servoIndex] - servoMinMidMaxValues.prevServoLimits[servoIndex])>=2)
     //{
       Serial.print("RfSerial_Data_Changed_innerPart: servoIndex="+String(servoIndex)+", ");
       Serial.print("displayChanelNumber="+ String(displayChanelNumber)+ ", ");
       Serial.print("mydata_received_value ="+ String(mydata_received_value)+", ");
       Serial.print("form_label_Min_Mid_Max="+String(form_label_Min_Mid_Max)+" , ");
-      Serial.print("prevServoLimits["+String(servoIndex)+"] = "+ String(prevServoLimits[servoIndex])+" , ");
-      Serial.print("servoLimits["+String(servoIndex)+"] = "+ String(servoLimits[servoIndex]));
+      Serial.print("servoMinMidMaxValues.prevServoLimits["+String(servoIndex)+"] = "+ String(servoMinMidMaxValues.prevServoLimits[servoIndex])+" , ");
+      Serial.print("servoMinMidMaxValues.servoLimits["+String(servoIndex)+"] = "+ String(servoMinMidMaxValues.servoLimits[servoIndex]));
       Serial.println(".");
-    ////Serial.println(" servoLimits["+String(servoIndex)+"] = "+ String(servoLimits[servoIndex])+" ");
+    ////Serial.println(" servoMinMidMaxValues.servoLimits["+String(servoIndex)+"] = "+ String(servoMinMidMaxValues.servoLimits[servoIndex])+" ");
     //}
     if(form_label_Min_Mid_Max == LABEL_FORM_MIN) {
-      writePulsesToDisplay.writeMINPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeMINPulsesToDisplay( displayChanelNumber, servoMinMidMaxValues.servoLimits[servoIndex]);
     }
     else if(form_label_Min_Mid_Max == LABEL_FORM_MID) {
-      writePulsesToDisplay.writeMIDPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeMIDPulsesToDisplay( displayChanelNumber, servoMinMidMaxValues.servoLimits[servoIndex]);
     }
     else if(form_label_Min_Mid_Max == LABEL_FORM_MAX) {
-      writePulsesToDisplay.writeMAXPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeMAXPulsesToDisplay( displayChanelNumber, servoMinMidMaxValues.servoLimits[servoIndex]);
     }
     else {
-      writePulsesToDisplay.writeCurrPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeCurrPulsesToDisplay( displayChanelNumber, servoMinMidMaxValues.servoLimits[servoIndex]);
     }
-    //writeOneFieldToDisplay(displayChanelNumber, form_label_Min_Mid_Max, servoLimits[servoIndex]); 
-    prevServoLimits[servoIndex] = servoLimits[servoIndex];
+    //writeOneFieldToDisplay(displayChanelNumber, form_label_Min_Mid_Max, servoMinMidMaxValues.servoLimits[servoIndex]); 
+    servoMinMidMaxValues.prevServoLimits[servoIndex] = servoMinMidMaxValues.servoLimits[servoIndex];
   }
 
   return data_changed;
@@ -726,16 +726,18 @@ bool RfSerial_Data_changed() {
     servoPositionChanged[(mydata_received.servoSet+16)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+16), mydata_received.servoSet, mydata_received.s1mid,  LABEL_FORM_MID);
     servoPositionChanged[(mydata_received.servoSet+32)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+32), mydata_received.servoSet, mydata_received.s1max,  LABEL_FORM_MAX);
     
-    #ifdef SEND_FROM_0_TO_255
-      uint16_t extrapolatedCurrentValue =
-          (mydata_received.s1curr)<128 ? 
-            (map(mydata_received.s1curr,   0, 127, servoLimits[(mydata_received.servoSet)           ], servoLimits[(mydata_received.servoSet) + (16 * 1)]) ) 
-          : (map(mydata_received.s1curr, 128, 255, servoLimits[(mydata_received.servoSet) + (16 * 1)], servoLimits[(mydata_received.servoSet) + (16 * 2)]) );
+    if(mydata_received.switchPos != 2){
+      #ifdef SEND_FROM_0_TO_255
+        uint16_t extrapolatedCurrentValue =
+            (mydata_received.s1curr)<128 ? 
+              (map(mydata_received.s1curr,   0, 127, servoMinMidMaxValues.servoLimits[(mydata_received.servoSet)           ], servoMinMidMaxValues.servoLimits[(mydata_received.servoSet) + (16 * 1)]) ) 
+            : (map(mydata_received.s1curr, 128, 255, servoMinMidMaxValues.servoLimits[(mydata_received.servoSet) + (16 * 1)], servoMinMidMaxValues.servoLimits[(mydata_received.servoSet) + (16 * 2)]) );
 
-      servoPositionChanged[(mydata_received.servoSet+48)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+48), mydata_received.servoSet, extrapolatedCurrentValue, LABEL_FORM_MAX+1);
-    #else
-      servoPositionChanged[(mydata_received.servoSet+48)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+48), mydata_received.servoSet, mydata_received.s1curr, LABEL_FORM_MAX+1);
-    #endif
+        servoPositionChanged[(mydata_received.servoSet+48)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+48), mydata_received.servoSet, extrapolatedCurrentValue, LABEL_FORM_MAX+1);
+      #else
+        servoPositionChanged[(mydata_received.servoSet+48)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+48), mydata_received.servoSet, mydata_received.s1curr, LABEL_FORM_MAX+1);
+      #endif
+    }
 
     if(servoPositionChanged[mydata_received.servoSet   ] == true ||
        servoPositionChanged[mydata_received.servoSet+16] == true ||
@@ -754,7 +756,7 @@ bool RfSerial_Data_changed() {
 
 void reset_RfSerialData() {
   for (short i=0; i<=47; i++) {
-    prevServoLimits[i] = servoLimits[i];
+    servoMinMidMaxValues.prevServoLimits[i] = servoMinMidMaxValues.servoLimits[i];
   }
 }
 
@@ -839,87 +841,3 @@ void reset_SerialDataChanged()
   s15_changed = false;
 }
 
-/*
-void writeMINPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
-  writeOneFieldToDisplay (chanelNum, LABEL_FORM_MIN, servo_Pwm, showDebug);  
-}
-void writeMINPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  writeOneFieldToDisplay (chanelNum, LABEL_FORM_MIN, servo_Pwm, false);  
-}
-
-void writeMIDPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
-  writeOneFieldToDisplay (chanelNum, LABEL_FORM_MID, servo_Pwm, showDebug);
-}
-void writeMIDPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  writeOneFieldToDisplay (chanelNum, LABEL_FORM_MID, servo_Pwm, false);
-}
-
-void writeMAXPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
-  writeOneFieldToDisplay (chanelNum, (LABEL_FORM_MAX+1) , servo_Pwm, showDebug);
-}
-
-void writeMAXPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  writeOneFieldToDisplay (chanelNum, LABEL_FORM_MAX+1, servo_Pwm, false);
-}
-
-void writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
-  writeOneFieldToDisplay (chanelNum, 2, servo_Pwm, showDebug);
-}
-
-void writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  writeOneFieldToDisplay (chanelNum, 2, servo_Pwm, false);
-}
-*/
-
-/*
-#define char_width_x 8
-
-#define char_height_y 8  
-#define char_shift_x  2
-#define chr_point_shift_x  1
-*/
-/*
-void writeOneFieldToDisplay (uint8_t chanelNum,uint8_t form_label_Min_Mid_Max, uint16_t servo_Pwm, bool showDebug){
-  uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
-  uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
-  uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*8)+2)) + (modulo*8);
-
-  if(showDebug == true) {
-    Serial.print("writePulsesToDisplay: ");
-    Serial.print("chanelNum:"+String(chanelNum)+", ");
-    //Serial.print("form_label_Min_Mid_Max:"+String(form_label_Min_Mid_Max)+", ");
-    Serial.print("servo_Pwm:"+String(servo_Pwm)+",  ");
-    //Serial.print("div_result = "+String(div_result)+", ");
-    //Serial.print("modulo = "+String(modulo)+", ");
-    Serial.print("yPos:"+String(yPos));
-    Serial.println(".");
-  } else {
-    //Serial.println("writeOneFieldToDisplay: yPos:"+String(yPos)+", chanelNum:"+String(chanelNum)+", form_label_Min_Mid_Max:"+String(form_label_Min_Mid_Max)+", servo_Pwm:"+String(servo_Pwm)+", servoPulseIndex:"+String(servoPulseIndex));
-    //delay(100);
-  }
-
-  uint8_t xPos = (((char_shift_x + (form_label_Min_Mid_Max*3)) * char_width_x));
-  writeOneFieldToDisplay_innerPart(xPos, chr_point_shift_x, yPos, char_height_y, form_label_Min_Mid_Max, servo_Pwm, chanelNum, showDebug);
-}
-*/
-/*
-void writeOneFieldToDisplay_innerPart (uint8_t xPos, uint16_t _chr_point_shift_x, uint8_t yPos, uint16_t _char_height_y, uint16_t form_label_Min_Mid_Max, uint16_t servo_Pwm,uint16_t chanelNum, bool showDebug)
-{
-  //uint8_t modulo2 = (chanelNum + form_label_Min_Mid_Max)%2;
-    //if(modulo2 ==0) 
-    //{
-      tft.fillRect((xPos + _chr_point_shift_x), yPos, (3*char_width_x)-_chr_point_shift_x, _char_height_y, BLACK);
-    //} else {
-    //    tft.fillRect((xPos + _chr_point_shift_x), yPos, (3*char_width_x)-_chr_point_shift_x, _char_height_y, WHITE);
-    //}
-    char numRead3[4];
-    dtostrf(servo_Pwm, 4, 0, numRead3);
-    tft.drawString(xPos, yPos, numRead3, YELLOW);
-}
-*/
-/*
-void writeArrow_activeServoSet (byte activeServoSet) {
-      tft.fillRect((128-(LEFT_ARROW_SIZE*8)), 0, (LEFT_ARROW_SIZE*8), 160, BLACK);
-      tft.drawString((128-(LEFT_ARROW_SIZE*8)), ((activeServoSet * ((2+8) * LEFT_ARROW_STEP))+3), "<", WHITE, LEFT_ARROW_SIZE);
-}
-*/

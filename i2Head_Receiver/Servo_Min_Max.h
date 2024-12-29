@@ -120,3 +120,21 @@
 #define LBL_SRV_MAX_forheadRight     45
 #define LBL_SRV_MAX_forheadLeft      46
 #define LBL_SRV_MAX_Jaw_UpDown       47
+
+#define LBL_SRV_CUR_eyeLeftUD        48
+#define LBL_SRV_CUR_eyeLeftLR        49
+#define LBL_SRV_CUR_eyeRightUD       50
+#define LBL_SRV_CUR_eyeRightLR       51
+#define LBL_SRV_CUR_eyelidLeftUpper  52
+#define LBL_SRV_CUR_eyelidLeftLower  53
+#define LBL_SRV_CUR_eyelidRightUpper 54
+#define LBL_SRV_CUR_eyelidRightLower 55
+#define LBL_SRV_CUR_eyebrowRight     56
+#define LBL_SRV_CUR_eyebrowLeft      57
+#define LBL_SRV_CUR_cheekRight       58
+#define LBL_SRV_CUR_cheekLeft        59
+#define LBL_SRV_CUR_upperLip         60
+#define LBL_SRV_CUR_forheadRight     61
+#define LBL_SRV_CUR_forheadLeft      62
+#define LBL_SRV_CUR_Jaw_UpDown       63
+

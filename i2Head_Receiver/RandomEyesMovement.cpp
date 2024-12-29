@@ -7,72 +7,61 @@ RandomEyesMovement::RandomEyesMovement() {
 }
 
 //void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, int servo_Limits[]) {
-void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, int servo_Limits[]) {
+void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, ServoMinMidMaxValues *theServoMinMidMaxValues) {
   Serial.println("REM:begin");
     pPwm = thePwm;
+    servoMinMidMaxValues = theServoMinMidMaxValues;
     //tft = theTft;
     writePulsesToDisplay = theWritePulsesToDisplay;
-    //left_arrow_step = the_left_arrow_step;
-    //servoLimits = servo_Limits;
-    for (int j =0;j<48; j++) {
-      localServoLimits[j] = servo_Limits[j];
-      //Serial.print("s_Lim["); 
-      //Serial.print(j); 
-      //Serial.print("]="); 
-      //Serial.print(servo_Limits[j]);
-      //Serial.print(", "); 
-      //Serial.println(localServoLimits[j]);
-      //delay(100);
-    }
+
     randomSeed(analogRead(A7));
+    previousRemMillis =  millis();
+    REM_interval =0;
     Serial.println("REM:End of begin().");
 }
-/*
-	void RandomEyesMovement::beginDisplay(ST7735 *theTft ) {
-    Serial.println("REM:beginDisplay start.");
-    tft = theTft;
-    Serial.println("REM:beginDisplay end.");
-  }
-*/
 
 void RandomEyesMovement::moveEyesRandomly(unsigned long currentMillis, String textToShow) {
-  Serial.print(textToShow+" REM: Start ");
-  REM_interval = random(20,2000);
-  //Serial.print(", REM_interval = "+String(REM_interval));
-  REM_pose = random (0,3);
-  //if (REM_pose>2) {REM_pose =2;}
-  //Serial.println(", REM_pose = "+String(REM_pose));
-  //delay(100);
-  
-  switch (REM_pose){
-    case 0:
-      Serial.println(" REM:0.start'blink'1");
-      RandomEyesMovement::blink(80);
-      //Serial.println("REM:0.'blink' end");
+  if (currentMillis - previousRemMillis >= REM_interval) 
+  {  // start timed event for REM  (randomly from20 to 2000 ms)
+	  previousRemMillis = currentMillis;
+
+    Serial.print(textToShow+" REM: Start ");
+    REM_interval = random(20,2000);
+    //Serial.print(", REM_interval = "+String(REM_interval));
+    REM_pose = random (0,3);
+    //if (REM_pose>2) {REM_pose =2;}
+    //Serial.println(", REM_pose = "+String(REM_pose));
+    //delay(100);
+    
+    switch (REM_pose){
+      case 0:
+        Serial.println(" REM:0.start'blink'1");
+        RandomEyesMovement::blink(80);
+        //Serial.println("REM:0.'blink' end");
+        
+        Serial.println(textToShow+" REM:0.  starting lookAtDirection(true,..) ");
+        RandomEyesMovement::lookAtRandomDirection(true, 50, 130, textToShow+" REM:0, ");
+        Serial.print(textToShow+" REM:0. OK");
+        
+      break;
+      case 1:
+        Serial.println(textToShow+" REM:1. starting lookAtDirection(true,..)");      
+        RandomEyesMovement::lookAtRandomDirection(true, 30, 130, textToShow+" REM:1, ");
+        Serial.print(textToShow+" REM:1. OK");
+      break;
+      case 2:
+        Serial.println(textToShow+" REM:2.  starting 'blink'2....");
+        RandomEyesMovement::blink(60);
+        //Serial.println("REM:2.  back from 'blink'");
+        
+        Serial.println(textToShow+" REM:2.  starting lookAtDirection(false,...)");
+        RandomEyesMovement::lookAtRandomDirection(false, 30, 130, textToShow+" REM:2, ");
+        Serial.print(textToShow+" REM:2. OK");
       
-      Serial.println(textToShow+" REM:0.  starting lookAtDirection(true,..) ");
-      RandomEyesMovement::lookAtRandomDirection(true, 50, 130, textToShow+" REM:0, ");
-      Serial.println(textToShow+" REM:0. OK");
-      
-    break;
-    case 1:
-      Serial.println(textToShow+" REM:1. starting lookAtDirection(true,..)");      
-      RandomEyesMovement::lookAtRandomDirection(true, 30, 130, textToShow+" REM:1, ");
-      Serial.println(textToShow+" REM:1. OK");
-    break;
-    case 2:
-      Serial.println(textToShow+" REM:2.  starting 'blink'2....");
-      RandomEyesMovement::blink(60);
-      //Serial.println("REM:2.  back from 'blink'");
-      
-      Serial.println(textToShow+" REM:2.  starting lookAtDirection(false,...)");
-      RandomEyesMovement::lookAtRandomDirection(false, 30, 130, textToShow+" REM:2, ");
-      Serial.println(textToShow+" REM:2. OK");
-      
-    break;
-  }
-  
-  delay(REM_interval);
+      break;
+    }
+    Serial.println(", REM:@END-OK");
+  } //delay(REM_interval);
 }
 
 void RandomEyesMovement::lookAtRandomDirection(bool generateRandomDirection, long minUpDown, long maxUpDown, String textToShow)
@@ -116,95 +105,119 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
 	uint16_t  SERVO1_MIN;
 	uint16_t  SERVO1_MID;
 	uint16_t  SERVO1_MAX;
-	uint16_t  SERVO2_MIN;
+	uint16_t  SERVO1_Cur_LBL;
+	
+  uint16_t  SERVO2_MIN;
 	uint16_t  SERVO2_MID;
 	uint16_t  SERVO2_MAX;
+	uint16_t  SERVO2_Cur_LBL;
 	
 	if (servoGroup == lookUpDown) {
 		chanelNum1 = i01_head_eyeLeftUD;
 		chanelNum2 = i01_head_eyeRightUD;
 		
-		SERVO1_MIN = localServoLimits[LBL_SRV_MAX_eyeLeftUD ];  //invertovane 255=hore
-		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyeLeftUD ];
-		SERVO1_MAX = localServoLimits[LBL_SRV_MIN_eyeLeftUD ];  //0 = dole
-		SERVO2_MIN = localServoLimits[LBL_SRV_MIN_eyeRightUD];
-		SERVO2_MID = localServoLimits[LBL_SRV_MID_eyeRightUD];
-		SERVO2_MAX = localServoLimits[LBL_SRV_MAX_eyeRightUD];
+		SERVO1_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyeLeftUD ];  //invertovane 255=hore
+		SERVO1_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyeLeftUD ];
+		SERVO1_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyeLeftUD ];  //0 = dole
+    SERVO1_Cur_LBL =LBL_SRV_CUR_eyeLeftUD;
+
+		SERVO2_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyeRightUD];
+		SERVO2_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyeRightUD];
+		SERVO2_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyeRightUD];
+    SERVO2_Cur_LBL =LBL_SRV_CUR_eyeRightUD;
 	} 
 	else if (servoGroup == lookLeftRight) {
 		chanelNum1 = i01_head_eyeLeftLR;
 		chanelNum2 = i01_head_eyeRightLR;
 		
- 		SERVO1_MIN = localServoLimits[LBL_SRV_MIN_eyeLeftLR ];
-		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyeLeftLR ];
-		SERVO1_MAX = localServoLimits[LBL_SRV_MAX_eyeLeftLR ];
-		SERVO2_MIN = localServoLimits[LBL_SRV_MIN_eyeRightLR];
-		SERVO2_MID = localServoLimits[LBL_SRV_MID_eyeRightLR];
-		SERVO2_MAX = localServoLimits[LBL_SRV_MAX_eyeRightLR];
+ 		SERVO1_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyeLeftLR ];
+		SERVO1_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyeLeftLR ];
+		SERVO1_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyeLeftLR ];
+    SERVO1_Cur_LBL =LBL_SRV_CUR_eyeLeftLR;
+
+		SERVO2_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyeRightLR];
+		SERVO2_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyeRightLR];
+		SERVO2_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyeRightLR];
+    SERVO2_Cur_LBL =LBL_SRV_CUR_eyeRightLR;
 	}
 	else if (servoGroup == lidLowerLeft) {
 		chanelNum1 = i01_head_eyelidLeftLower;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = localServoLimits[LBL_SRV_MAX_eyelidLeftLower];
-		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidLeftLower];
-		SERVO1_MAX = localServoLimits[LBL_SRV_MIN_eyelidLeftLower];
+ 		SERVO1_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyelidLeftLower];
+		SERVO1_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyelidLeftLower];
+		SERVO1_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyelidLeftLower];
+    SERVO1_Cur_LBL =LBL_SRV_CUR_eyelidLeftLower;
+
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
+    SERVO2_Cur_LBL = 0;
 	}
 	else if (servoGroup == lidUpperLeft) {
 		chanelNum1 = i01_head_eyelidLeftUpper;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = localServoLimits[LBL_SRV_MIN_eyelidLeftUpper];
-		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidLeftUpper];
-		SERVO1_MAX = localServoLimits[LBL_SRV_MAX_eyelidLeftUpper];
+ 		SERVO1_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyelidLeftUpper];
+		SERVO1_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyelidLeftUpper];
+		SERVO1_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyelidLeftUpper];
+    SERVO1_Cur_LBL =LBL_SRV_CUR_eyelidLeftUpper;
+
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
+    SERVO2_Cur_LBL = 0;
 	}
 	else if (servoGroup == lidLowerRight) {
 		chanelNum1 = i01_head_eyelidRightLower;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = localServoLimits[LBL_SRV_MIN_eyelidRightLower];
-		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidRightLower];
-		SERVO1_MAX = localServoLimits[LBL_SRV_MAX_eyelidRightLower];
+ 		SERVO1_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyelidRightLower];
+		SERVO1_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyelidRightLower];
+		SERVO1_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyelidRightLower];
+    SERVO1_Cur_LBL =LBL_SRV_CUR_eyelidRightLower;
+
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
+    SERVO2_Cur_LBL = 0;
 	}
 	else if (servoGroup == lidUpperRight) {
 		chanelNum1 = i01_head_eyelidRightUpper;
 		chanelNum2 = 99;
 		
- 		SERVO1_MIN = localServoLimits[LBL_SRV_MAX_eyelidRightUpper];//invertovane 255 =zatvorene
-		SERVO1_MID = localServoLimits[LBL_SRV_MID_eyelidRightUpper];
-		SERVO1_MAX = localServoLimits[LBL_SRV_MIN_eyelidRightUpper]; //0 = otvorene
+ 		SERVO1_MIN = servoMinMidMaxValues->servoLimits[LBL_SRV_MAX_eyelidRightUpper];//invertovane 255 =zatvorene
+		SERVO1_MID = servoMinMidMaxValues->servoLimits[LBL_SRV_MID_eyelidRightUpper];
+		SERVO1_MAX = servoMinMidMaxValues->servoLimits[LBL_SRV_MIN_eyelidRightUpper]; //0 = otvorene
+    SERVO1_Cur_LBL =LBL_SRV_CUR_eyelidRightUpper;
+
 		SERVO2_MIN = 0;
 		SERVO2_MID = 0;
 		SERVO2_MAX = 0;
+    SERVO2_Cur_LBL = 0;
 	} else {
     return false;
   }
 
     servo_angle = constrain(servo_angle, 0, 255);
 	
-    uint16_t  servo1_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
-    uint16_t  servo2_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
+    //uint16_t  servo1_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
+    //uint16_t  servo2_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
 
     if(chanelNum1<99) {
+      uint16_t  servo1_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
+      servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL] = servo1_Pwm;
       pPwm->setPWM( chanelNum1, 0, servo1_Pwm);
-      //RandomEyesMovement::writeCurrPulsesToDisplay(chanelNum1, servo1_Pwm);
-      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm, true);
+      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum1, servo1_Pwm, true);
     }
+
     if(chanelNum2<99) {
+      uint16_t  servo2_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
+      servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL] = servo2_Pwm;
       pPwm->setPWM( chanelNum2, 0, servo2_Pwm);
-      //writePulsesToDisplay(chanelNum2, SERVO2_MIN, servo2_Pwm, SERVO2_MAX);
-      //RandomEyesMovement::writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm);
       writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm, true);
     }
+  
   return true;
 }
 //---------------------------------------------------------------------
