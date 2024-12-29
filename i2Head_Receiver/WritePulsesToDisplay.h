@@ -1,5 +1,5 @@
-#ifndef RandomEyesMovement_h
-#define RandomEyesMovement_h
+#ifndef WritePulsesToDisplay_h
+#define WritePulsesToDisplay_h
 
 #include "Arduino.h"
 #include <Adafruit_PWMServoDriver.h>
@@ -15,7 +15,6 @@
 #include "Servo_Min_Max.h"
 #include "ServoConnectionToPwm.h"
 #include "colors.h"
-#include "WritePulsesToDisplay.h"
 
 
 #define lookUpDown    1
@@ -26,7 +25,7 @@
 #define lidUpperRight 6
 
 
-class RandomEyesMovement{
+class WritePulsesToDisplay{
 	public:
 	int UpDownState;
 	int LeftRightState;
@@ -40,35 +39,43 @@ class RandomEyesMovement{
 	long REM_pose;
   uint8_t * left_arrow_step;
 	
-	RandomEyesMovement();
+  //ST7735 * tft;
+  
+  //#define OLED_RESET 4
+  #define DISP_CS    6 //CS   -CS
+  #define DISP_RS    7 //A0   -RS
+  #define DISP_RST   8 //RESET-RST
+  #define DISP_SID   4 //SDA  -SDA
+  #define DISP_SCLK  5 //SCK  -SCK
+  //#define LEFT_ARROW_SIZE  2
+  //#define LEFT_ARROW_STEP  2 //moved to colors.h
+
+    //           ST7735(uint8_t CS, uint8_t RS, uint8_t SID, uint8_t SCLK, uint8_t RST);
+    ST7735 tft = ST7735(   DISP_CS,    DISP_RS,    DISP_SID,    DISP_SCLK,    DISP_RST); 
+  //ST7735 tft = ST7735(         6,          7,          11,           13,           8); 
+    //           ST7735(uint8_t CS, uint8_t RS, uint8_t RST);
+  //ST7735 tft = ST7735(6, 7, 8);    
+
+
+uint8_t spacing = 8;
+uint8_t yPos = 2;
+uint8_t servoNum = 0;
+
+//char servo[]="S";
+//char colon[]=":";
+
+	WritePulsesToDisplay();
   //Stream *theStream
-	//void begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, int[] );
-  void begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, int[] );
-	//void beginDisplay(ST7735 *theTft );
+
+	void begin();//ST7735 *theTft);//, int[] );
 	
   //Stream *_stream;
-  Adafruit_PWMServoDriver * pPwm;
-
-  // ST7735 * tft;
-  WritePulsesToDisplay *writePulsesToDisplay;
   
-  //int servoLimits[];
-  int localServoLimits[64];
 
-  void moveEyesRandomly(unsigned long currentMillis, String textToShow);
-	void lookAtRandomDirection(bool generateRandomDirection, long minUpDown, long maxUpDown, String textToShow);
-	void blink (int time);
-	
-	bool lookUpDown_write(byte servo_angle);
-	bool lookLeftRight_write(byte servo_angle);
-	bool lidLowerLeft_write(byte servo_angle);
-	bool lidUpperLeft_write( byte servo_angle);
-	bool lidLowerRight_write(byte servo_angle);
-	bool lidUpperRight_write(byte servo_angle);
-	
-	bool servoSender_write(byte servo_angle, byte servoGroup);
- 
-  //void writePulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MIN, uint16_t servo_Pwm, uint16_t SERVO_MAX);
+
+  //int localServoLimits[48];
+
+  //void WritePulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MIN, uint16_t servo_Pwm, uint16_t SERVO_MAX);
   
   //void writeMINPulsesToDisplay (uint8_t chanelNum, uint16_t SERVO_MIN);
   //void writeMIDPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm);
@@ -85,6 +92,8 @@ class RandomEyesMovement{
   void writeMAXPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm);
   void writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug);
   void writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm);
+  void writeArrow_activeServoSet (byte activeServoSet);
+  void drawString(uint8_t x, uint8_t y, char *c, uint16_t color, uint8_t size=1);
 
 
 };

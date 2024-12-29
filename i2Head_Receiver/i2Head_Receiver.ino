@@ -4,7 +4,6 @@
 
 #define USE_RF_REMOTE
 
-#define USE_DISPLAY_ST7735
 //#define SERVOPULSE_CONVERSION_NEEDED
 //#define  SEND_FROM_0_TO_1023
 #define  SEND_FROM_0_TO_255
@@ -12,12 +11,10 @@
 #include "version_num.h"
 #include "build_defs.h"
 
-#ifdef USE_DISPLAY_ST7735
   #ifndef ST7735_h
     #define ST7735_h
     #include <ST7735.h>
   #endif
-#endif
 
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -25,12 +22,18 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <Servo.h>
 #include "Servo_Min_Max.h"
+
 #include "i2Head_Receiver.h"
+
 #include "ServoConnectionToPwm.h"
 #include <math.h>
 #include "colors.h"
 
+#include "WritePulsesToDisplay.h"
+
 #include "TxRx_dataStructures.h"
+
+//#include "ServoMinMidMaxValues.h"
 
 #define RANDOM_EYES_MOVEMENT
 
@@ -71,24 +74,6 @@ const unsigned char completeVersion[] =
   #define Baud 9600    // Serial monitor
 #endif
 
-#ifdef USE_DISPLAY_ST7735
-
-  //#define OLED_RESET 4
-  #define DISP_CS    6 //CS   -CS
-  #define DISP_RS    7 //A0   -RS
-  #define DISP_RST   8 //RESET-RST
-  #define DISP_SID   4 //SDA  -SDA
-  #define DISP_SCLK  5 //SCK  -SCK
-  //#define LEFT_ARROW_SIZE  2
-  //#define LEFT_ARROW_STEP  2 //moved to colors.h
-
-    //           ST7735(uint8_t CS, uint8_t RS, uint8_t SID, uint8_t SCLK, uint8_t RST);
-    ST7735 tft = ST7735(   DISP_CS,    DISP_RS,    DISP_SID,    DISP_SCLK,    DISP_RST); 
-  //ST7735 tft = ST7735(         6,          7,          11,           13,           8); 
-    //           ST7735(uint8_t CS, uint8_t RS, uint8_t RST);
-  //ST7735 tft = ST7735(6, 7, 8);    
-
-
 uint8_t spacing = 8;
 uint8_t yPos = 2;
 uint8_t servoNum = 0;
@@ -96,12 +81,12 @@ uint8_t servoNum = 0;
 char servo[]="S";//"Servo ";
 char colon[]=":";//": ";
 
-#endif
-
 
 int16_t mode;
 int count;
 int noDataCount = 0;
+
+WritePulsesToDisplay writePulsesToDisplay;
 
 #ifdef RANDOM_EYES_MOVEMENT
   RandomEyesMovement randomEyesMovement; //  = new RandomEyesMovement();
@@ -139,6 +124,7 @@ Hardware SPI Pins:
 RF24 radio(10,9);  //zapojenie CE a CSN pinov   //RF24(rf24_gpio_pin_t _cepin, rf24_gpio_pin_t _cspin, uint32_t _spi_speed = RF24_SPI_SPEED);
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
+//ServoMinMidMaxValues servoMinMidMaxValues;
 
 unsigned long previousMillis = 0;
 const long interval = 20;
@@ -154,7 +140,11 @@ RX_DATA_STRUCTURE prev_mydata;
 RX_SERIAL_DATA_STRUCTURE my_serial_data_received;
 RX_SERIAL_DATA_STRUCTURE prev_my_serial_data;
 
-byte previousServoSet = 0;
+byte previousServoSet;
+byte previousFireBtn1;
+byte previousSwitchPos;
+
+
 
 //#ifdef RANDOM_EYES_MOVEMENT
 //#endif
@@ -195,21 +185,12 @@ void setup()
 
   //printf("%s\n", completeVersion);
 	
-  #ifdef USE_DISPLAY_ST7735
-    Serial.println("setup: tft.initR()...");
-    tft.initR();
-    //tft.initR(INITR_BLACKTAB); 
-
-    //tft.pushColor(uint16_t color)
-    //tft.pushColor(tft.Color565(RED,GREEN,BLUE));
-    //tft.fillScreen(BLACK);
-    //Set background colour
-    Serial.println("setup: tft.fillScreen(BLACK)");
-    tft.fillScreen(BLACK);
-    Serial.println("setup: BLACK =done");
+    writePulsesToDisplay.begin();//&tft);//, servoLimits);
+    previousServoSet  = 0;
+    previousFireBtn1  = 1;
+    previousSwitchPos = 1;
 
     prepareServoForm();
-  #endif
 
   Serial.println("setup: @1 Servo Initialization started");
   pwm.begin(); //pwm.begin(0);   0 = driver_ID
@@ -218,10 +199,11 @@ void setup()
   //all_center_points_initialized = false;
   delay(200);
 
+
   #ifdef RANDOM_EYES_MOVEMENT
     uint8_t _left_arrow_step = LEFT_ARROW_STEP;
-    randomEyesMovement.begin(&pwm, &tft, servoLimits);
-    //randomEyesMovement.beginDisplay(&tft);
+    //randomEyesMovement.begin(&pwm, &tft, servoLimits);
+    ////randomEyesMovement.beginDisplay(&tft);
   #endif
 
   //konfiguracia NRF24 
@@ -311,16 +293,22 @@ void loop()
       }else if (mydata_received.devType == 2) {
         RF_Serial_data_changed = RfSerial_Data_changed();
           if(RF_Serial_data_changed == true) {
+            //Serial.println(" loop(after RfSerial_Data_changed) : previousServoSet = "+String(previousServoSet)+".");
+            String helpText = "="+String(previousServoSet)+" "+String(previousFireBtn1)+" "+ String(previousSwitchPos)+".";
+
             //compute_from_SerialData_toMinMax();
             #ifdef RANDOM_EYES_MOVEMENT
-              //randomEyesMovement.moveEyesRandomly(currentMillis);
+            if(mydata_received.fireBtn1 == 0) {
+              Serial.println("loop: fireBtn pressed -> starting randomEyesMovement.moveEyesRandomly...");
+              randomEyesMovement.moveEyesRandomly(currentMillis,"With RF");
+            }
             #endif
           }
           //reset_RfSerialData();
       }
     } else  if(currentMillis - previousSafetyMillis > 1000) {         // safeties
       #ifdef RANDOM_EYES_MOVEMENT
-        randomEyesMovement.moveEyesRandomly(currentMillis);
+        randomEyesMovement.moveEyesRandomly(currentMillis,"No RF");
       #endif
     }
     //Serial.println(" @1.2 end");
@@ -376,9 +364,15 @@ void prepareServoForm(){
       dtostrf(servoNum, 1, 0, numRead);
       strcat(combined, servo);
       strcat(combined, numRead);
-      tft.drawString(0, yPos, combined, WHITE);
+
+      //tft.drawString(0, yPos, combined, WHITE);
+      writePulsesToDisplay.drawString(0, yPos, combined, WHITE);
+
       //Serial.println("setup: y:"+String(yPos)+", combined:"+String(combined)+", colon:"+String(colon)+"count:"+String(count)+", i:"+String(i)+".");
-      tft.drawString((((strlen(servo) + 1)) * 8), yPos, colon, WHITE);    
+
+      //tft.drawString((((strlen(servo) + 1)) * 8), yPos, colon, WHITE);    
+      //writePulsesToDisplay.drawString((((strlen(servo) + 1)) * 8), yPos, colon, WHITE);
+      
       servoNum ++;
       yPos += spacing;    
       }
@@ -396,19 +390,19 @@ Serial.println("prepareServoForm: Write initial servo positions (350 to start wi
         //char numRead[4];
         //dtostrf(servoLimits[servoNum], 4, 0, numRead);
         //tft.drawString((((strlen(servo) + 2)) * 8), yPos, numRead, YELLOW);
-        writeMINPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum], true);
+        writePulsesToDisplay.writeMINPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum]);//, true);
 
         //char numRead2[4];
         //dtostrf(servoLimits[servoNum + 16], 4, 0, numRead2);
         //tft.drawString((((strlen(servo) + 2 + 4)) * 8), yPos, numRead2, YELLOW);
-        writeMIDPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+16], true);
+        writePulsesToDisplay.writeMIDPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+16]);//, true);
 
-        writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+48], true);
+        writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+48], true);
 
         //char numRead3[4];
         //dtostrf(servoLimits[servoNum + 32], 4, 0, numRead3);
         //tft.drawString((((strlen(servo) + 2 + 8)) * 8), yPos, numRead3, YELLOW);
-        writeMAXPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+32], true);
+        writePulsesToDisplay.writeMAXPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoLimits[servoNum+32]);//, true);
         //Serial.print("prepareServoForm: y:"+String(yPos)+", count:"+String(count)+", i:"+String(i)+".");
       i_str = String(i);
       servoNum ++;
@@ -418,7 +412,8 @@ Serial.println("prepareServoForm: Write initial servo positions (350 to start wi
   }
   Serial.println("prepareServoForm: 2.for {for{}} done");
 
-   tft.drawString((128-(LEFT_ARROW_SIZE*8)), 3, "<", WHITE, LEFT_ARROW_SIZE);
+  writePulsesToDisplay.writeArrow_activeServoSet (0);
+  //tft.drawString((128-(LEFT_ARROW_SIZE*8)), 3, "<", WHITE, LEFT_ARROW_SIZE);
 }
 
 
@@ -676,20 +671,26 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
     data_changed = true; 
     //if(abs(servoLimits[servoIndex] - prevServoLimits[servoIndex])>=2)
     //{
-      Serial.println("RfSerial_Data_Changed_innerPart: servoIndex="+String(servoIndex)+", displayChanelNumber="+ String(displayChanelNumber)+ ", mydata_received_value ="+ String(mydata_received_value)+", form_label_Min_Mid_Max="+String(form_label_Min_Mid_Max)+" ,servoLimits["+String(servoIndex)+"] = "+ String(servoLimits[servoIndex])+". ");
+      Serial.print("RfSerial_Data_Changed_innerPart: servoIndex="+String(servoIndex)+", ");
+      Serial.print("displayChanelNumber="+ String(displayChanelNumber)+ ", ");
+      Serial.print("mydata_received_value ="+ String(mydata_received_value)+", ");
+      Serial.print("form_label_Min_Mid_Max="+String(form_label_Min_Mid_Max)+" , ");
+      Serial.print("prevServoLimits["+String(servoIndex)+"] = "+ String(prevServoLimits[servoIndex])+" , ");
+      Serial.print("servoLimits["+String(servoIndex)+"] = "+ String(servoLimits[servoIndex]));
+      Serial.println(".");
     ////Serial.println(" servoLimits["+String(servoIndex)+"] = "+ String(servoLimits[servoIndex])+" ");
     //}
     if(form_label_Min_Mid_Max == LABEL_FORM_MIN) {
-      writeMINPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeMINPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
     }
     else if(form_label_Min_Mid_Max == LABEL_FORM_MID) {
-      writeMIDPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeMIDPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
     }
     else if(form_label_Min_Mid_Max == LABEL_FORM_MAX) {
-      writeMAXPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeMAXPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
     }
     else {
-      writeCurrPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
+      writePulsesToDisplay.writeCurrPulsesToDisplay( displayChanelNumber, servoLimits[servoIndex]);
     }
     //writeOneFieldToDisplay(displayChanelNumber, form_label_Min_Mid_Max, servoLimits[servoIndex]); 
     prevServoLimits[servoIndex] = servoLimits[servoIndex];
@@ -700,12 +701,26 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
 #define USE_RF_SERIAL_D_CH_INNER_PART
 bool RfSerial_Data_changed() {
   bool data_changed = false;
+    if(abs(mydata_received.fireBtn1 - previousFireBtn1)>0){
+      Serial.println("RfSerial_Data_changed: mydata_received.fireBtn1 CHANGED from "+String(previousFireBtn1)+" to  "+String(mydata_received.fireBtn1)+" ");
+      data_changed = true;
+      previousFireBtn1 = mydata_received.fireBtn1;
+    }
+    if(abs(mydata_received.switchPos - previousSwitchPos)>0){
+      Serial.println("RfSerial_Data_changed: mydata_received.switchPos CHANGED from "+String(previousSwitchPos)+" to  "+String(mydata_received.switchPos)+" ");
+      data_changed = true;
+      previousSwitchPos = mydata_received.switchPos;
+    }
 
   //#ifdef USE_RF_SERIAL_D_CH_INNER_PART
-    if(mydata_received.servoSet != previousServoSet) {
-      Serial.println("RfSerial_Data_changed: mydata_received.servoSet CHANGED to  "+String(mydata_received.servoSet)+".");
-      writeArrow_activeServoSet(mydata_received.servoSet);
+    if(abs(mydata_received.servoSet - previousServoSet)>0) {
+      Serial.println("RfSerial_Data_changed: mydata_received.servoSet CHANGED from "+String(previousServoSet)+" to  "+String(mydata_received.servoSet)+" ");
+      writePulsesToDisplay.writeArrow_activeServoSet(mydata_received.servoSet);
+      data_changed = true; 
       previousServoSet = mydata_received.servoSet;
+      //Serial.println(" OK new  previousServoSet = "+String(previousServoSet)+".");
+      //previousServoSet = previousServoSet;
+      //Serial.println(" OK new  previousServoSet = "+String(previousServoSet)+".");
     }
     servoPositionChanged[(mydata_received.servoSet+ 0)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+ 0), mydata_received.servoSet, mydata_received.s1min,  LABEL_FORM_MIN);
     servoPositionChanged[(mydata_received.servoSet+16)] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+16), mydata_received.servoSet, mydata_received.s1mid,  LABEL_FORM_MID);
@@ -731,6 +746,7 @@ bool RfSerial_Data_changed() {
     }
 
   if(data_changed == true){
+      //Serial.println(" RfSerial_Data_changed:@End previousServoSet = "+String(previousServoSet)+".");
       //Serial.println(" my_serial_data_received_changed ----");
     }
   return data_changed;
@@ -746,39 +762,39 @@ void reset_RfSerialData() {
 
 bool serialData_changed() {
   bool data_changed = false;
-  if(my_serial_data_received.s00 != prev_my_serial_data.s00){data_changed = true; s00_changed = true; writeMINPulsesToDisplay( 0,my_serial_data_received.s00); Serial.print("s00 = "+ String(my_serial_data_received.s00)+" ");}
-  if(my_serial_data_received.s01 != prev_my_serial_data.s01){data_changed = true; s01_changed = true; writeMINPulsesToDisplay( 1,my_serial_data_received.s01); Serial.print("s01 = "+ String(my_serial_data_received.s01)+" ");}
-  if(my_serial_data_received.s02 != prev_my_serial_data.s02){data_changed = true; s02_changed = true; writeMINPulsesToDisplay( 2,my_serial_data_received.s02); Serial.print("s02 = "+ String(my_serial_data_received.s02)+" ");}
-  if(my_serial_data_received.s03 != prev_my_serial_data.s03){data_changed = true; s03_changed = true; writeMINPulsesToDisplay( 3,my_serial_data_received.s03); Serial.print("s03 = "+ String(my_serial_data_received.s03)+" ");}
-  if(my_serial_data_received.s04 != prev_my_serial_data.s04){data_changed = true; s04_changed = true; writeMINPulsesToDisplay( 4,my_serial_data_received.s04); Serial.print("s04 = "+ String(my_serial_data_received.s04)+" ");}
-  if(my_serial_data_received.s05 != prev_my_serial_data.s05){data_changed = true; s05_changed = true; writeMINPulsesToDisplay( 5,my_serial_data_received.s05); Serial.print("s05 = "+ String(my_serial_data_received.s05)+" ");}
-  if(my_serial_data_received.s06 != prev_my_serial_data.s06){data_changed = true; s06_changed = true; writeMINPulsesToDisplay( 6,my_serial_data_received.s06); Serial.print("s06 = "+ String(my_serial_data_received.s06)+" ");}
-  if(my_serial_data_received.s07 != prev_my_serial_data.s07){data_changed = true; s07_changed = true; writeMINPulsesToDisplay( 7,my_serial_data_received.s07); Serial.print("s07 = "+ String(my_serial_data_received.s07)+" ");}
-  if(my_serial_data_received.s08 != prev_my_serial_data.s08){data_changed = true; s08_changed = true; writeMINPulsesToDisplay( 8,my_serial_data_received.s08); Serial.print("s08 = "+ String(my_serial_data_received.s08)+" ");}
-  if(my_serial_data_received.s09 != prev_my_serial_data.s09){data_changed = true; s09_changed = true; writeMINPulsesToDisplay( 9,my_serial_data_received.s09); Serial.print("s09 = "+ String(my_serial_data_received.s09)+" ");}
-  if(my_serial_data_received.s10 != prev_my_serial_data.s10){data_changed = true; s10_changed = true; writeMINPulsesToDisplay(10,my_serial_data_received.s10); Serial.print("s10 = "+ String(my_serial_data_received.s10)+" ");}
-  if(my_serial_data_received.s11 != prev_my_serial_data.s11){data_changed = true; s11_changed = true; writeMINPulsesToDisplay(11,my_serial_data_received.s11); Serial.print("s11 = "+ String(my_serial_data_received.s11)+" ");}
-  if(my_serial_data_received.s12 != prev_my_serial_data.s12){data_changed = true; s12_changed = true; writeMINPulsesToDisplay(12,my_serial_data_received.s12); Serial.print("s12 = "+ String(my_serial_data_received.s12)+" ");}
-  if(my_serial_data_received.s13 != prev_my_serial_data.s13){data_changed = true; s13_changed = true; writeMINPulsesToDisplay(13,my_serial_data_received.s13); Serial.print("s13 = "+ String(my_serial_data_received.s13)+" ");}
-  if(my_serial_data_received.s14 != prev_my_serial_data.s14){data_changed = true; s14_changed = true; writeMINPulsesToDisplay(14,my_serial_data_received.s14); Serial.print("s14 = "+ String(my_serial_data_received.s14)+" ");}
-  if(my_serial_data_received.s15 != prev_my_serial_data.s15){data_changed = true; s15_changed = true; writeMINPulsesToDisplay(15,my_serial_data_received.s15); Serial.print("s15 = "+ String(my_serial_data_received.s15)+" ");}
+  if(my_serial_data_received.s00 != prev_my_serial_data.s00){data_changed = true; s00_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 0,my_serial_data_received.s00); Serial.print("s00 = "+ String(my_serial_data_received.s00)+" ");}
+  if(my_serial_data_received.s01 != prev_my_serial_data.s01){data_changed = true; s01_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 1,my_serial_data_received.s01); Serial.print("s01 = "+ String(my_serial_data_received.s01)+" ");}
+  if(my_serial_data_received.s02 != prev_my_serial_data.s02){data_changed = true; s02_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 2,my_serial_data_received.s02); Serial.print("s02 = "+ String(my_serial_data_received.s02)+" ");}
+  if(my_serial_data_received.s03 != prev_my_serial_data.s03){data_changed = true; s03_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 3,my_serial_data_received.s03); Serial.print("s03 = "+ String(my_serial_data_received.s03)+" ");}
+  if(my_serial_data_received.s04 != prev_my_serial_data.s04){data_changed = true; s04_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 4,my_serial_data_received.s04); Serial.print("s04 = "+ String(my_serial_data_received.s04)+" ");}
+  if(my_serial_data_received.s05 != prev_my_serial_data.s05){data_changed = true; s05_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 5,my_serial_data_received.s05); Serial.print("s05 = "+ String(my_serial_data_received.s05)+" ");}
+  if(my_serial_data_received.s06 != prev_my_serial_data.s06){data_changed = true; s06_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 6,my_serial_data_received.s06); Serial.print("s06 = "+ String(my_serial_data_received.s06)+" ");}
+  if(my_serial_data_received.s07 != prev_my_serial_data.s07){data_changed = true; s07_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 7,my_serial_data_received.s07); Serial.print("s07 = "+ String(my_serial_data_received.s07)+" ");}
+  if(my_serial_data_received.s08 != prev_my_serial_data.s08){data_changed = true; s08_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 8,my_serial_data_received.s08); Serial.print("s08 = "+ String(my_serial_data_received.s08)+" ");}
+  if(my_serial_data_received.s09 != prev_my_serial_data.s09){data_changed = true; s09_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay( 9,my_serial_data_received.s09); Serial.print("s09 = "+ String(my_serial_data_received.s09)+" ");}
+  if(my_serial_data_received.s10 != prev_my_serial_data.s10){data_changed = true; s10_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay(10,my_serial_data_received.s10); Serial.print("s10 = "+ String(my_serial_data_received.s10)+" ");}
+  if(my_serial_data_received.s11 != prev_my_serial_data.s11){data_changed = true; s11_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay(11,my_serial_data_received.s11); Serial.print("s11 = "+ String(my_serial_data_received.s11)+" ");}
+  if(my_serial_data_received.s12 != prev_my_serial_data.s12){data_changed = true; s12_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay(12,my_serial_data_received.s12); Serial.print("s12 = "+ String(my_serial_data_received.s12)+" ");}
+  if(my_serial_data_received.s13 != prev_my_serial_data.s13){data_changed = true; s13_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay(13,my_serial_data_received.s13); Serial.print("s13 = "+ String(my_serial_data_received.s13)+" ");}
+  if(my_serial_data_received.s14 != prev_my_serial_data.s14){data_changed = true; s14_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay(14,my_serial_data_received.s14); Serial.print("s14 = "+ String(my_serial_data_received.s14)+" ");}
+  if(my_serial_data_received.s15 != prev_my_serial_data.s15){data_changed = true; s15_changed = true; writePulsesToDisplay.writeMINPulsesToDisplay(15,my_serial_data_received.s15); Serial.print("s15 = "+ String(my_serial_data_received.s15)+" ");}
  
-  if(my_serial_data_received.x00 != prev_my_serial_data.x00){data_changed = true; x00_changed = true; writeMAXPulsesToDisplay(32,my_serial_data_received.x00); Serial.print("x00 = "+ String(my_serial_data_received.x00)+" ");}
-  if(my_serial_data_received.x01 != prev_my_serial_data.x01){data_changed = true; x01_changed = true; writeMAXPulsesToDisplay(33,my_serial_data_received.x01); Serial.print("x01 = "+ String(my_serial_data_received.x01)+" ");}
-  if(my_serial_data_received.x02 != prev_my_serial_data.x02){data_changed = true; x02_changed = true; writeMAXPulsesToDisplay(34,my_serial_data_received.x02); Serial.print("x02 = "+ String(my_serial_data_received.x02)+" ");}
-  if(my_serial_data_received.x03 != prev_my_serial_data.x03){data_changed = true; x03_changed = true; writeMAXPulsesToDisplay(35,my_serial_data_received.x03); Serial.print("x03 = "+ String(my_serial_data_received.x03)+" ");}
-  if(my_serial_data_received.x04 != prev_my_serial_data.x04){data_changed = true; x04_changed = true; writeMAXPulsesToDisplay(36,my_serial_data_received.x04); Serial.print("x04 = "+ String(my_serial_data_received.x04)+" ");}
-  if(my_serial_data_received.x05 != prev_my_serial_data.x05){data_changed = true; x05_changed = true; writeMAXPulsesToDisplay(37,my_serial_data_received.x05); Serial.print("x05 = "+ String(my_serial_data_received.x05)+" ");}
-  if(my_serial_data_received.x06 != prev_my_serial_data.x06){data_changed = true; x06_changed = true; writeMAXPulsesToDisplay(38,my_serial_data_received.x06); Serial.print("x06 = "+ String(my_serial_data_received.x06)+" ");}
-  if(my_serial_data_received.x07 != prev_my_serial_data.x07){data_changed = true; x07_changed = true; writeMAXPulsesToDisplay(39,my_serial_data_received.x07); Serial.print("x07 = "+ String(my_serial_data_received.x07)+" ");}
-  if(my_serial_data_received.x08 != prev_my_serial_data.x08){data_changed = true; x08_changed = true; writeMAXPulsesToDisplay(40,my_serial_data_received.x08); Serial.print("x08 = "+ String(my_serial_data_received.x08)+" ");}
-  if(my_serial_data_received.x09 != prev_my_serial_data.x09){data_changed = true; x09_changed = true; writeMAXPulsesToDisplay(41,my_serial_data_received.x09); Serial.print("x09 = "+ String(my_serial_data_received.x09)+" ");}
-  if(my_serial_data_received.x10 != prev_my_serial_data.x10){data_changed = true; x10_changed = true; writeMAXPulsesToDisplay(42,my_serial_data_received.x10); Serial.print("x10 = "+ String(my_serial_data_received.x10)+" ");}
-  if(my_serial_data_received.x11 != prev_my_serial_data.x11){data_changed = true; x11_changed = true; writeMAXPulsesToDisplay(43,my_serial_data_received.x11); Serial.print("x11 = "+ String(my_serial_data_received.x11)+" ");}
-  if(my_serial_data_received.x12 != prev_my_serial_data.x12){data_changed = true; x12_changed = true; writeMAXPulsesToDisplay(44,my_serial_data_received.x12); Serial.print("x12 = "+ String(my_serial_data_received.x12)+" ");}
-  if(my_serial_data_received.x13 != prev_my_serial_data.x13){data_changed = true; x13_changed = true; writeMAXPulsesToDisplay(45,my_serial_data_received.x13); Serial.print("x13 = "+ String(my_serial_data_received.x13)+" ");}
-  if(my_serial_data_received.x14 != prev_my_serial_data.x14){data_changed = true; x14_changed = true; writeMAXPulsesToDisplay(46,my_serial_data_received.x14); Serial.print("x14 = "+ String(my_serial_data_received.x14)+" ");}
-  if(my_serial_data_received.x15 != prev_my_serial_data.x15){data_changed = true; x15_changed = true; writeMAXPulsesToDisplay(47,my_serial_data_received.x15); Serial.print("x15 = "+ String(my_serial_data_received.x15)+" ");}
+  if(my_serial_data_received.x00 != prev_my_serial_data.x00){data_changed = true; x00_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(32,my_serial_data_received.x00); Serial.print("x00 = "+ String(my_serial_data_received.x00)+" ");}
+  if(my_serial_data_received.x01 != prev_my_serial_data.x01){data_changed = true; x01_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(33,my_serial_data_received.x01); Serial.print("x01 = "+ String(my_serial_data_received.x01)+" ");}
+  if(my_serial_data_received.x02 != prev_my_serial_data.x02){data_changed = true; x02_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(34,my_serial_data_received.x02); Serial.print("x02 = "+ String(my_serial_data_received.x02)+" ");}
+  if(my_serial_data_received.x03 != prev_my_serial_data.x03){data_changed = true; x03_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(35,my_serial_data_received.x03); Serial.print("x03 = "+ String(my_serial_data_received.x03)+" ");}
+  if(my_serial_data_received.x04 != prev_my_serial_data.x04){data_changed = true; x04_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(36,my_serial_data_received.x04); Serial.print("x04 = "+ String(my_serial_data_received.x04)+" ");}
+  if(my_serial_data_received.x05 != prev_my_serial_data.x05){data_changed = true; x05_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(37,my_serial_data_received.x05); Serial.print("x05 = "+ String(my_serial_data_received.x05)+" ");}
+  if(my_serial_data_received.x06 != prev_my_serial_data.x06){data_changed = true; x06_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(38,my_serial_data_received.x06); Serial.print("x06 = "+ String(my_serial_data_received.x06)+" ");}
+  if(my_serial_data_received.x07 != prev_my_serial_data.x07){data_changed = true; x07_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(39,my_serial_data_received.x07); Serial.print("x07 = "+ String(my_serial_data_received.x07)+" ");}
+  if(my_serial_data_received.x08 != prev_my_serial_data.x08){data_changed = true; x08_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(40,my_serial_data_received.x08); Serial.print("x08 = "+ String(my_serial_data_received.x08)+" ");}
+  if(my_serial_data_received.x09 != prev_my_serial_data.x09){data_changed = true; x09_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(41,my_serial_data_received.x09); Serial.print("x09 = "+ String(my_serial_data_received.x09)+" ");}
+  if(my_serial_data_received.x10 != prev_my_serial_data.x10){data_changed = true; x10_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(42,my_serial_data_received.x10); Serial.print("x10 = "+ String(my_serial_data_received.x10)+" ");}
+  if(my_serial_data_received.x11 != prev_my_serial_data.x11){data_changed = true; x11_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(43,my_serial_data_received.x11); Serial.print("x11 = "+ String(my_serial_data_received.x11)+" ");}
+  if(my_serial_data_received.x12 != prev_my_serial_data.x12){data_changed = true; x12_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(44,my_serial_data_received.x12); Serial.print("x12 = "+ String(my_serial_data_received.x12)+" ");}
+  if(my_serial_data_received.x13 != prev_my_serial_data.x13){data_changed = true; x13_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(45,my_serial_data_received.x13); Serial.print("x13 = "+ String(my_serial_data_received.x13)+" ");}
+  if(my_serial_data_received.x14 != prev_my_serial_data.x14){data_changed = true; x14_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(46,my_serial_data_received.x14); Serial.print("x14 = "+ String(my_serial_data_received.x14)+" ");}
+  if(my_serial_data_received.x15 != prev_my_serial_data.x15){data_changed = true; x15_changed = true; writePulsesToDisplay.writeMAXPulsesToDisplay(47,my_serial_data_received.x15); Serial.print("x15 = "+ String(my_serial_data_received.x15)+" ");}
 
   if(data_changed == true){
       //Serial.println(" my_serial_data_received_changed ----");
@@ -823,13 +839,13 @@ void reset_SerialDataChanged()
   s15_changed = false;
 }
 
+/*
 void writeMINPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
   writeOneFieldToDisplay (chanelNum, LABEL_FORM_MIN, servo_Pwm, showDebug);  
 }
 void writeMINPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
   writeOneFieldToDisplay (chanelNum, LABEL_FORM_MIN, servo_Pwm, false);  
 }
-
 
 void writeMIDPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
   writeOneFieldToDisplay (chanelNum, LABEL_FORM_MID, servo_Pwm, showDebug);
@@ -853,14 +869,16 @@ void writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showD
 void writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
   writeOneFieldToDisplay (chanelNum, 2, servo_Pwm, false);
 }
+*/
 
-
+/*
 #define char_width_x 8
 
 #define char_height_y 8  
 #define char_shift_x  2
 #define chr_point_shift_x  1
-
+*/
+/*
 void writeOneFieldToDisplay (uint8_t chanelNum,uint8_t form_label_Min_Mid_Max, uint16_t servo_Pwm, bool showDebug){
   uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
   uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
@@ -868,17 +886,23 @@ void writeOneFieldToDisplay (uint8_t chanelNum,uint8_t form_label_Min_Mid_Max, u
 
   if(showDebug == true) {
     Serial.print("writePulsesToDisplay: ");
-    Serial.print("chanelNum:"+String(chanelNum)+", form_label_Min_Mid_Max:"+String(form_label_Min_Mid_Max)+", servo_Pwm:"+String(servo_Pwm)+",  ");
-    Serial.print("div_result = "+String(div_result)+", modulo = "+String(modulo)+", ");
-    Serial.println("yPos:"+String(yPos)+", ");
+    Serial.print("chanelNum:"+String(chanelNum)+", ");
+    //Serial.print("form_label_Min_Mid_Max:"+String(form_label_Min_Mid_Max)+", ");
+    Serial.print("servo_Pwm:"+String(servo_Pwm)+",  ");
+    //Serial.print("div_result = "+String(div_result)+", ");
+    //Serial.print("modulo = "+String(modulo)+", ");
+    Serial.print("yPos:"+String(yPos));
+    Serial.println(".");
   } else {
     //Serial.println("writeOneFieldToDisplay: yPos:"+String(yPos)+", chanelNum:"+String(chanelNum)+", form_label_Min_Mid_Max:"+String(form_label_Min_Mid_Max)+", servo_Pwm:"+String(servo_Pwm)+", servoPulseIndex:"+String(servoPulseIndex));
+    //delay(100);
   }
 
   uint8_t xPos = (((char_shift_x + (form_label_Min_Mid_Max*3)) * char_width_x));
   writeOneFieldToDisplay_innerPart(xPos, chr_point_shift_x, yPos, char_height_y, form_label_Min_Mid_Max, servo_Pwm, chanelNum, showDebug);
 }
-
+*/
+/*
 void writeOneFieldToDisplay_innerPart (uint8_t xPos, uint16_t _chr_point_shift_x, uint8_t yPos, uint16_t _char_height_y, uint16_t form_label_Min_Mid_Max, uint16_t servo_Pwm,uint16_t chanelNum, bool showDebug)
 {
   //uint8_t modulo2 = (chanelNum + form_label_Min_Mid_Max)%2;
@@ -892,9 +916,10 @@ void writeOneFieldToDisplay_innerPart (uint8_t xPos, uint16_t _chr_point_shift_x
     dtostrf(servo_Pwm, 4, 0, numRead3);
     tft.drawString(xPos, yPos, numRead3, YELLOW);
 }
-
+*/
+/*
 void writeArrow_activeServoSet (byte activeServoSet) {
       tft.fillRect((128-(LEFT_ARROW_SIZE*8)), 0, (LEFT_ARROW_SIZE*8), 160, BLACK);
       tft.drawString((128-(LEFT_ARROW_SIZE*8)), ((activeServoSet * ((2+8) * LEFT_ARROW_STEP))+3), "<", WHITE, LEFT_ARROW_SIZE);
 }
-
+*/

@@ -6,10 +6,12 @@ RandomEyesMovement::RandomEyesMovement() {
 
 }
 
-void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, int servo_Limits[]) {
+//void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, int servo_Limits[]) {
+void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, int servo_Limits[]) {
   Serial.println("REM:begin");
     pPwm = thePwm;
-    tft = theTft;
+    //tft = theTft;
+    writePulsesToDisplay = theWritePulsesToDisplay;
     //left_arrow_step = the_left_arrow_step;
     //servoLimits = servo_Limits;
     for (int j =0;j<48; j++) {
@@ -33,8 +35,8 @@ void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, 
   }
 */
 
-void RandomEyesMovement::moveEyesRandomly(unsigned long currentMillis) {
-  Serial.print("REM: Start ");
+void RandomEyesMovement::moveEyesRandomly(unsigned long currentMillis, String textToShow) {
+  Serial.print(textToShow+" REM: Start ");
   REM_interval = random(20,2000);
   //Serial.print(", REM_interval = "+String(REM_interval));
   REM_pose = random (0,3);
@@ -44,28 +46,28 @@ void RandomEyesMovement::moveEyesRandomly(unsigned long currentMillis) {
   
   switch (REM_pose){
     case 0:
-      Serial.println("REM:0.start'blink'1");
+      Serial.println(" REM:0.start'blink'1");
       RandomEyesMovement::blink(80);
       //Serial.println("REM:0.'blink' end");
       
-      Serial.print("REM:0.  starting lookAtDirection(true,..) ");
-      RandomEyesMovement::lookAtRandomDirection(true, 50, 130, "REM:0, ");
-      Serial.println(" OK");
+      Serial.println(textToShow+" REM:0.  starting lookAtDirection(true,..) ");
+      RandomEyesMovement::lookAtRandomDirection(true, 50, 130, textToShow+" REM:0, ");
+      Serial.println(textToShow+" REM:0. OK");
       
     break;
     case 1:
-      Serial.print("REM:1. starting lookAtDirection(true,..)");      
-      RandomEyesMovement::lookAtRandomDirection(true, 30, 130, "REM:1, ");
-      Serial.println(" OK");
+      Serial.println(textToShow+" REM:1. starting lookAtDirection(true,..)");      
+      RandomEyesMovement::lookAtRandomDirection(true, 30, 130, textToShow+" REM:1, ");
+      Serial.println(textToShow+" REM:1. OK");
     break;
     case 2:
-      Serial.println("REM:2.  starting 'blink'2....");
+      Serial.println(textToShow+" REM:2.  starting 'blink'2....");
       RandomEyesMovement::blink(60);
       //Serial.println("REM:2.  back from 'blink'");
       
-      Serial.print("REM:2.  starting lookAtDirection(false,...)");
-      RandomEyesMovement::lookAtRandomDirection(false, 30, 130, "REM:2, ");
-      Serial.println("");
+      Serial.println(textToShow+" REM:2.  starting lookAtDirection(false,...)");
+      RandomEyesMovement::lookAtRandomDirection(false, 30, 130, textToShow+" REM:2, ");
+      Serial.println(textToShow+" REM:2. OK");
       
     break;
   }
@@ -79,7 +81,7 @@ void RandomEyesMovement::lookAtRandomDirection(bool generateRandomDirection, lon
         UpDownState = random(minUpDown, maxUpDown);
         LeftRightState = random(30, 220);
         lidMod = ( 60 - UpDownState)/2;
-        Serial.print("UD= "+String(UpDownState)+" LR= "+String(LeftRightState)+" lidMod="+String(lidMod)+" ");
+        Serial.println(textToShow+" UD= "+String(UpDownState)+" LR= "+String(LeftRightState)+" lidMod="+String(lidMod)+" ");
         RandomEyesMovement::lookUpDown_write(UpDownState);
         RandomEyesMovement::lookLeftRight_write(LeftRightState);
     }
@@ -194,96 +196,17 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
 
     if(chanelNum1<99) {
       pPwm->setPWM( chanelNum1, 0, servo1_Pwm);
-      RandomEyesMovement::writeMIDPulsesToDisplay(chanelNum1, servo1_Pwm);
+      //RandomEyesMovement::writeCurrPulsesToDisplay(chanelNum1, servo1_Pwm);
+      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm, true);
     }
     if(chanelNum2<99) {
       pPwm->setPWM( chanelNum2, 0, servo2_Pwm);
       //writePulsesToDisplay(chanelNum2, SERVO2_MIN, servo2_Pwm, SERVO2_MAX);
-      RandomEyesMovement::writeMIDPulsesToDisplay(chanelNum2, servo2_Pwm);
+      //RandomEyesMovement::writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm);
+      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm, true);
     }
   return true;
 }
+//---------------------------------------------------------------------
 
-void RandomEyesMovement::writeMINPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  
-  uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
-  uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
-  //Serial.print("writePulsesToDisplay:");// div_result = "+String(div_result)+", modulo = "+String(modulo));
-  uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*8)+4)) + (modulo*8);
-  Serial.println("writePulsesToDisplay: yPos="+String(yPos)+", ["+String(chanelNum)+"]->"+String(servo_Pwm));
-
-  tft->fillRect((((4) * 8)-2), yPos, 20, 8, BLACK);
-  char numRead[4];
-  dtostrf(servo_Pwm, 4, 0, numRead);
-  tft->drawString(((3) * 8), yPos, numRead, YELLOW);
-
-  ///tft->fillRect((((4 + 4) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead2[4];
-  //dtostrf( (servo_Pwm) , 4, 0, numRead2);
-  ////dtostrf(chanelNum, 4, 0, numRead2);
-  //tft->drawString(((3 + 4) * 8), yPos, numRead2, YELLOW);
-
-  //tft->fillRect((((4 + 8) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead3[4];
-  //dtostrf(SERVO_MAX, 4, 0, numRead3);
-  //tft->drawString(((3 + 8) * 8), yPos, numRead3, YELLOW);
-  //Serial.print(" loop_writePulsesToDisplay: yPos:"+String(yPos)+" , inChar:"+String(inChar)+". ");
-
-  //Serial.println("RandomEyesMovement::writePulsesToDisplay End.");
-}
-void RandomEyesMovement::writeMIDPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  
-  uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
-  uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
-  //Serial.print("writePulsesToDisplay:");// div_result = "+String(div_result)+", modulo = "+String(modulo));
-  uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*8)+4)) + (modulo*8);
-  Serial.println("writePulsesToDisplay: yPos="+String(yPos)+", ["+String(chanelNum)+"]->"+String(servo_Pwm));
-
-  //tft->fillRect((((4) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead[4];
-  //dtostrf(SERVO_MIN, 4, 0, numRead);
-  //tft->drawString(((3) * 8), yPos, numRead, YELLOW);
-
-  tft->fillRect((((4 + 4) * 8)-2), yPos, 20, 8, BLACK);
-  char numRead2[4];
-  dtostrf( (servo_Pwm) , 4, 0, numRead2);
-  //dtostrf(chanelNum, 4, 0, numRead2);
-  tft->drawString(((3 + 4) * 8), yPos, numRead2, YELLOW);
-
-  //tft->fillRect((((4 + 8) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead3[4];
-  //dtostrf(SERVO_MAX, 4, 0, numRead3);
-  //tft->drawString(((3 + 8) * 8), yPos, numRead3, YELLOW);
-  //Serial.print(" loop_writePulsesToDisplay: yPos:"+String(yPos)+" , inChar:"+String(inChar)+". ");
-
-  //Serial.println("RandomEyesMovement::writePulsesToDisplay End.");
-}
-
-void RandomEyesMovement::writeMAXPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  
-  uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
-  uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
-  //Serial.print("writePulsesToDisplay:");// div_result = "+String(div_result)+", modulo = "+String(modulo));
-  uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*8)+4)) + (modulo*8);
-  Serial.println("writePulsesToDisplay: yPos="+String(yPos)+", ["+String(chanelNum)+"]->"+String(servo_Pwm));
-
-  //tft->fillRect((((4) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead[4];
-  //dtostrf(SERVO_MIN, 4, 0, numRead);
-  //tft->drawString(((3) * 8), yPos, numRead, YELLOW);
-
-  //tft->fillRect((((4 + 4) * 8)-2), yPos, 20, 8, BLACK);
-  //char numRead2[4];
-  //dtostrf( (servo_Pwm) , 4, 0, numRead2);
-  ////dtostrf(chanelNum, 4, 0, numRead2);
-  //tft->drawString(((3 + 4) * 8), yPos, numRead2, YELLOW);
-
-  tft->fillRect((((4 + 8) * 8)-2), yPos, 20, 8, BLACK);
-  char numRead3[4];
-  dtostrf(servo_Pwm, 4, 0, numRead3);
-  tft->drawString(((3 + 8) * 8), yPos, numRead3, YELLOW);
-  //Serial.print(" loop_writePulsesToDisplay: yPos:"+String(yPos)+" , inChar:"+String(inChar)+". ");
-
-  //Serial.println("RandomEyesMovement::writePulsesToDisplay End.");
-}
 
