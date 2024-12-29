@@ -16,6 +16,7 @@
 #include "ServoConnectionToPwm.h"
 #include "colors.h"
 #include "WritePulsesToDisplay.h"
+#include "ServoMinMidMaxValues.h"
 
 
 #define lookUpDown    1
@@ -36,18 +37,21 @@ class RandomEyesMovement{
 	int altuplidpulse;
 	int altlolidpulse;
 
-	long REM_interval;
+	unsigned long previousRemMillis;
+  long REM_interval;
 	long REM_pose;
   uint8_t * left_arrow_step;
+  
 	
 	RandomEyesMovement();
   //Stream *theStream
 	//void begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, int[] );
-  void begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, int[] );
+  void begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, ServoMinMidMaxValues *theServoMinMidMaxValues);
 	//void beginDisplay(ST7735 *theTft );
 	
   //Stream *_stream;
   Adafruit_PWMServoDriver * pPwm;
+  ServoMinMidMaxValues *servoMinMidMaxValues;
 
   // ST7735 * tft;
   WritePulsesToDisplay *writePulsesToDisplay;
