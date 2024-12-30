@@ -208,14 +208,14 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
       uint16_t  servo1_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
       servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL] = servo1_Pwm;
       pPwm->setPWM( chanelNum1, 0, servo1_Pwm);
-      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum1, servo1_Pwm, true);
+      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum1, servo1_Pwm, false);
     }
 
     if(chanelNum2<99) {
       uint16_t  servo2_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
       servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL] = servo2_Pwm;
       pPwm->setPWM( chanelNum2, 0, servo2_Pwm);
-      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm, true);
+      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm, false);
     }
   
   return true;
