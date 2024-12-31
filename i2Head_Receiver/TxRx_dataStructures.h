@@ -66,3 +66,11 @@ struct TX_DATA_STRUCTURE{
   int16_t count;
 };
 
+struct SERVO_EEPROM_CONFIGURATION{
+  int servoMinMidMax[48] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                             0, 0, 0, 0, 0, 0, 0, 0
+                            };
+};

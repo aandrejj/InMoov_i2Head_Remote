@@ -35,6 +35,8 @@
 
 #include "ServoMinMidMaxValues.h"
 
+#include <EEPROM.h>
+
 #define RANDOM_EYES_MOVEMENT
 
 #ifdef RANDOM_EYES_MOVEMENT
@@ -116,6 +118,10 @@ RX_DATA_STRUCTURE prev_mydata;
 RX_SERIAL_DATA_STRUCTURE my_serial_data_received;
 RX_SERIAL_DATA_STRUCTURE prev_my_serial_data;
 
+//RX_SERIAL_DATA_STRUCTURE prev_my_serial_data;
+
+SERVO_EEPROM_CONFIGURATION servoEepromConfig;
+
 byte previousServoSet;
 byte previousFireBtn1;
 byte previousSwitchPos;
@@ -142,6 +148,18 @@ void setup()
   Serial.println("");
   Serial.println("------------------------------------------");
 
+  Serial.println("setup: @1 getconfiguration  started");
+  //servoEepromConfig = getConfiguation();
+  getConfiguation();
+  Serial.println("setup: @1 getconfiguration End.Ok");
+
+  Serial.println("setup: @2 ShowConfiguration started");
+  //ShowConfiguration(servoEepromConfig);
+  ShowConfiguration();
+  Serial.println("setup: @2 ShowConfiguration End.Ok");
+
+
+
   writePulsesToDisplay.begin();//&tft);//, servoMinMidMaxValues.servoLimits);
   previousServoSet  = 0;
   previousFireBtn1  = 1;
@@ -149,10 +167,10 @@ void setup()
 
   prepareServoForm();
 
-  Serial.println("setup: @1 Servo Initialization started");
+  Serial.println("setup: @3 Servo Initialization started");
   pwm.begin(); //pwm.begin(0);   0 = driver_ID
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
-	Serial.println("setup: @2 Servos on PCA9685  attached");
+	Serial.println("setup: @4 Servos on PCA9685  attached");
   delay(200);
 
 
@@ -164,28 +182,27 @@ void setup()
   resetData();
   //config for NRF24 
   #ifdef USE_RF_REMOTE
-  	Serial.println("setup: @3 radio.begin()..");
+  	Serial.println("setup: @5 radio.begin()..");
     radio.begin();
     //radio.setAutoAck(false);
     radio.setAutoAck(true);
     
     //Serial.println("setup: radio.setDataRate(RF24_250KBPS)");
     //radio.setDataRate(RF24_250KBPS);
-    Serial.println("setup: radio.openReadingPipe(1,pipeIn)");
+    Serial.println("setup: @5radio.openReadingPipe(1,pipeIn)");
     radio.openReadingPipe(1,pipeIn);
     
-    Serial.println("setup: radio.setPALevel(RF24_PA_MIN)");
+    Serial.println("setup: @5radio.setPALevel(RF24_PA_MIN)");
     radio.setPALevel(RF24_PA_MIN);
    
     radio.startListening();
-    Serial.println("setup: @4 rf-radio started");
+    Serial.println("setup: @6 rf-radio started");
   #endif
 
   //initMinMidMax_values();
 
   delay(600);
-
-  Serial.println("setup: @8 done. setup END.");
+  Serial.println("setup: @7 done. setup END.");
 }
 
 //-------------------------loop------------------------------------------------
@@ -229,8 +246,23 @@ void loop()
             //compute_from_SerialData_toMinMax();
             #ifdef RANDOM_EYES_MOVEMENT
             if(mydata_received.fireBtn1 == 0) {
+
               Serial.println("loop: fireBtn pressed");
+
+              Serial.println("writeConfiguation started.");
+              writeConfiguation();
+              Serial.println("writeConfiguation End.Ok.");
+              
+              //Serial.println("getconfiguration  started");
+              //getConfiguation();
+              //Serial.println("getconfiguration End.Ok");
+
+              //Serial.println("ShowConfiguration started");
+              //ShowConfiguration();
+              //Serial.println("ShowConfiguration End.Ok");
+              
               println_AllServoLimits_Values();
+
             }
             #endif
           } else {
@@ -277,6 +309,57 @@ void loop()
 //------------------------------end of  loop()----------------------------------
 //------------------------------end of  loop()----------------------------------
 //------------------------------end of  loop()----------------------------------
+
+void writeCounterToEeprom()
+{
+  for (int i = 0; i < 48; i++)
+    EEPROM.write(i, i);
+}
+
+void getConfiguation()
+{
+  int eeAddress = 0; 
+  EEPROM.get( eeAddress, servoEepromConfig );
+  for (int i = 0; i < 16; i++){
+    servoMinMidMaxValues.servoLimits[i]    = servoEepromConfig.servoMinMidMax[i];
+    servoMinMidMaxValues.servoLimits[i+16] = servoEepromConfig.servoMinMidMax[i+16];
+    servoMinMidMaxValues.servoLimits[i+32] = servoEepromConfig.servoMinMidMax[i+32];
+  }
+}
+
+
+void ShowConfiguration(){
+  Serial.println("ShowConfiguration: ");
+  for (int i = 0; i < 48; i++){
+      //Serial.println("ServoEepromConfig.servoMinMidMax["+String(i)+"]" + String(tmpServoEepromConfig.servoMinMidMax[i])+"]");
+      Serial.println("ServoEepromConfig.servoMinMidMax["+String(i)+"]=" + String(servoEepromConfig.servoMinMidMax[i])+".");
+  }
+}
+
+/*
+void createDemoConfiguration(){
+  for (int i = 0; i < 48; i++){
+    servoEepromConfig.servoMinMidMax[i]=i;
+  }
+}
+*/
+
+void writeConfiguation()
+{
+  for (int i = 0; i < 16; i++){
+    servoEepromConfig.servoMinMidMax[i]=servoMinMidMaxValues.servoLimits[i];
+    servoEepromConfig.servoMinMidMax[i+16]=servoMinMidMaxValues.servoLimits[i+16];
+    servoEepromConfig.servoMinMidMax[i+32]=servoMinMidMaxValues.servoLimits[i+32];
+  }
+
+  int eeAddress = 0;   //Location we want the data to be put.
+
+  EEPROM.put(eeAddress, servoEepromConfig);
+  Serial.print("Written custom data type! \n\nView the example sketch eeprom_get to see how you can retrieve the values!");
+
+}
+
+
 void prepareServoForm(){
   Serial.println("prepareServoForm: Write servo numbers 1.for {for{}} start");
 //Write servo numbers 
