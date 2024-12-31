@@ -1,7 +1,7 @@
-
 #define eyeToLip_Scale  0.5 
 #define ch5ToLip_Scale  0.45 
 #define ch6ToLip_Scale  0.45 
+
 
 int ch_1 = 0;
 int ch_2 = 0;
