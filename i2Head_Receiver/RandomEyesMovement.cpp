@@ -60,7 +60,7 @@ void RandomEyesMovement::moveEyesRandomly(unsigned long currentMillis, String te
       
       break;
     }
-    Serial.println(", REM:@END-OK");
+    //Serial.println(", REM:@END-OK");
   } //delay(REM_interval);
 }
 
@@ -70,7 +70,7 @@ void RandomEyesMovement::lookAtRandomDirection(bool generateRandomDirection, lon
         UpDownState = random(minUpDown, maxUpDown);
         LeftRightState = random(30, 220);
         lidMod = ( 60 - UpDownState)/2;
-        Serial.println(textToShow+" UD= "+String(UpDownState)+" LR= "+String(LeftRightState)+" lidMod="+String(lidMod)+" ");
+        Serial.print(", UD= "+String(UpDownState)+" LR= "+String(LeftRightState)+" lidMod="+String(lidMod)+" ");
         RandomEyesMovement::lookUpDown_write(UpDownState);
         RandomEyesMovement::lookLeftRight_write(LeftRightState);
     }
@@ -199,24 +199,24 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
     return false;
   }
 
-    servo_angle = constrain(servo_angle, 0, 255);
-	
-    //uint16_t  servo1_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
-    //uint16_t  servo2_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
+  servo_angle = constrain(servo_angle, 0, 255);
 
-    if(chanelNum1<99) {
-      uint16_t  servo1_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
-      servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL] = servo1_Pwm;
-      pPwm->setPWM( chanelNum1, 0, servo1_Pwm);
-      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum1, servo1_Pwm, false);
-    }
+  if(chanelNum1<99) {
+    servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL] = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO1_MIN, SERVO1_MID ) : map(servo_angle, 128, 255, SERVO1_MID , SERVO1_MAX));
+    writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum1, servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL], false);
+  }
 
-    if(chanelNum2<99) {
-      uint16_t  servo2_Pwm = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
-      servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL] = servo2_Pwm;
-      pPwm->setPWM( chanelNum2, 0, servo2_Pwm);
-      writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servo2_Pwm, false);
-    }
+  if(chanelNum2<99) {
+    servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL] = (servo_angle < 128 ? map(servo_angle, 0, 127, SERVO2_MIN, SERVO2_MID ) : map(servo_angle, 128, 255, SERVO2_MID , SERVO2_MAX));
+    writePulsesToDisplay->writeCurrPulsesToDisplay(chanelNum2, servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL], false);
+  }
+
+  if(chanelNum1<99) {
+    pPwm->setPWM( chanelNum1, 0, servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL]);
+  }
+  if(chanelNum2<99) {
+    pPwm->setPWM( chanelNum2, 0, servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL]);
+  }
   
   return true;
 }
