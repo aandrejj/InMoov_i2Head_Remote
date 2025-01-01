@@ -125,6 +125,7 @@ SERVO_EEPROM_CONFIGURATION servoEepromConfig;
 byte previousServoSet;
 byte previousFireBtn1;
 byte previousSwitchPos;
+byte previousSwitchPos1;
 
 bool RF_data_changed = false;
 bool serial_data_changed = false;
@@ -266,10 +267,15 @@ void loop()
             }
             #endif
           } else {
-            if(mydata_received.switchPos == 2) {
+            if(mydata_received.switchPos == 1) {
+              if(previousSwitchPos1 != mydata_received.switchPos) {
+                resetAllServosToMidPos();
+              }
+            } else if(mydata_received.switchPos == 2) {
               //Serial.println("loop: switchPos ==2 -> starting randomEyesMovement.moveEyesRandomly...");
               randomEyesMovement.moveEyesRandomly(currentMillis,"With RF");
             }
+            previousSwitchPos1 = mydata_received.switchPos;
           } 
           //reset_RfSerialData();
       }
@@ -310,6 +316,18 @@ void loop()
 //------------------------------end of  loop()----------------------------------
 //------------------------------end of  loop()----------------------------------
 
+void resetAllServosToMidPos(){
+  Serial.println("resetAllServosToMidPos: start");
+  for (int i = 0; i < 16; i++){
+    servoMinMidMaxValues.servoLimits[i+48] = servoMinMidMaxValues.servoLimits[i+16];
+    writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[i+48], true);
+  }
+  RF_Serial_data_changed == true;
+  copy_RF_Data_toPwmData();
+  sendData_toPwmDriver();
+
+}
+
 void writeCounterToEeprom()
 {
   for (int i = 0; i < 48; i++)
@@ -330,9 +348,11 @@ void getConfiguation()
 
 void ShowConfiguration(){
   Serial.println("ShowConfiguration: ");
-  for (int i = 0; i < 48; i++){
+  for (int i = 0; i < 16; i++){
       //Serial.println("ServoEepromConfig.servoMinMidMax["+String(i)+"]" + String(tmpServoEepromConfig.servoMinMidMax[i])+"]");
-      Serial.println("ServoEepromConfig.servoMinMidMax["+String(i)+"]=" + String(servoEepromConfig.servoMinMidMax[i])+".");
+      Serial.print  ("MinMidMax "+String(i   )+":" + String(servoEepromConfig.servoMinMidMax[i   ])+", ");
+      Serial.print  (String(servoEepromConfig.servoMinMidMax[i+16])+", ");
+      Serial.println(String(servoEepromConfig.servoMinMidMax[i+32])+".");
   }
 }
 
@@ -884,63 +904,48 @@ void println_AllServoLimits_Values()
   Serial.println("#define SERVO_MIN_eyeLeftUD         "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftUD       + 0)])+"");
   Serial.println("#define SERVO_MID_eyeLeftUD         "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftUD       +16)])+"");
   Serial.println("#define SERVO_MAX_eyeLeftUD         "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftUD       +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyeLeftLR         "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftLR       + 0)])+"");
   Serial.println("#define SERVO_MID_eyeLeftLR         "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftLR       +16)])+"");
   Serial.println("#define SERVO_MAX_eyeLeftLR         "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftLR       +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyeRightUD        "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeRightUD      + 0)])+"");
   Serial.println("#define SERVO_MID_eyeRightUD        "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeRightUD      +16)])+"");
   Serial.println("#define SERVO_MAX_eyeRightUD        "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeRightUD      +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyeRightLR        "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeRightLR      + 0)])+"");
   Serial.println("#define SERVO_MID_eyeRightLR        "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeRightLR      +16)])+"");
   Serial.println("#define SERVO_MAX_eyeRightLR        "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyeRightLR      +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyelidLeftUpper   "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftUpper + 0)])+"");
   Serial.println("#define SERVO_MID_eyelidLeftUpper   "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftUpper +16)])+"");
   Serial.println("#define SERVO_MAX_eyelidLeftUpper   "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftUpper +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyelidLeftLower   "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftLower + 0)])+"");
   Serial.println("#define SERVO_MID_eyelidLeftLower   "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftLower +16)])+"");
   Serial.println("#define SERVO_MAX_eyelidLeftLower   "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftLower +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyelidRightUpper  "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightUpper+ 0)])+"");
   Serial.println("#define SERVO_MID_eyelidRightUpper  "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightUpper+16)])+"");
   Serial.println("#define SERVO_MAX_eyelidRightUpper  "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightUpper+32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyelidRightLower  "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightLower+ 0)])+"");
   Serial.println("#define SERVO_MID_eyelidRightLower  "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightLower+16)])+"");
   Serial.println("#define SERVO_MAX_eyelidRightLower  "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightLower+32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyebrowRight      "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyebrowRight    + 0)])+"");
   Serial.println("#define SERVO_MID_eyebrowRight      "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyebrowRight    +16)])+"");
   Serial.println("#define SERVO_MAX_eyebrowRight      "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyebrowRight    +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_eyebrowLeft       "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyebrowLeft     + 0)])+"");
   Serial.println("#define SERVO_MID_eyebrowLeft       "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyebrowLeft     +16)])+"");
   Serial.println("#define SERVO_MAX_eyebrowLeft       "+String(servoMinMidMaxValues.servoLimits[(i01_head_eyebrowLeft     +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_cheekRight        "+String(servoMinMidMaxValues.servoLimits[(i01_head_cheekRight      + 0)])+"");
   Serial.println("#define SERVO_MID_cheekRight        "+String(servoMinMidMaxValues.servoLimits[(i01_head_cheekRight      +16)])+"");
   Serial.println("#define SERVO_MAX_cheekRight        "+String(servoMinMidMaxValues.servoLimits[(i01_head_cheekRight      +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_cheekLeft         "+String(servoMinMidMaxValues.servoLimits[(i01_head_cheekLeft       + 0)])+"");
   Serial.println("#define SERVO_MID_cheekLeft         "+String(servoMinMidMaxValues.servoLimits[(i01_head_cheekLeft       +16)])+"");
   Serial.println("#define SERVO_MAX_cheekLeft         "+String(servoMinMidMaxValues.servoLimits[(i01_head_cheekLeft       +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_upperLip          "+String(servoMinMidMaxValues.servoLimits[(i01_head_upperLip        + 0)])+"");
   Serial.println("#define SERVO_MID_upperLip          "+String(servoMinMidMaxValues.servoLimits[(i01_head_upperLip        +16)])+"");
   Serial.println("#define SERVO_MAX_upperLip          "+String(servoMinMidMaxValues.servoLimits[(i01_head_upperLip        +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_forheadRight      "+String(servoMinMidMaxValues.servoLimits[(i01_head_forheadRight    + 0)])+"");
   Serial.println("#define SERVO_MID_forheadRight      "+String(servoMinMidMaxValues.servoLimits[(i01_head_forheadRight    +16)])+"");
   Serial.println("#define SERVO_MAX_forheadRight      "+String(servoMinMidMaxValues.servoLimits[(i01_head_forheadRight    +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_forheadLeft       "+String(servoMinMidMaxValues.servoLimits[(i01_head_forheadLeft     + 0)])+"");
   Serial.println("#define SERVO_MID_forheadLeft       "+String(servoMinMidMaxValues.servoLimits[(i01_head_forheadLeft     +16)])+"");
   Serial.println("#define SERVO_MAX_forheadLeft       "+String(servoMinMidMaxValues.servoLimits[(i01_head_forheadLeft     +32)])+"");
-  Serial.println(" ");
   Serial.println("#define SERVO_MIN_Jaw_UpDown        "+String(servoMinMidMaxValues.servoLimits[(Jaw_UpDown               + 0)])+"");
   Serial.println("#define SERVO_MID_Jaw_UpDown        "+String(servoMinMidMaxValues.servoLimits[(Jaw_UpDown               +16)])+"");
   Serial.println("#define SERVO_MAX_Jaw_UpDown        "+String(servoMinMidMaxValues.servoLimits[(Jaw_UpDown               +32)])+"");
