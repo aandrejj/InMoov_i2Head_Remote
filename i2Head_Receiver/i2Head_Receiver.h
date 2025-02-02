@@ -2,6 +2,7 @@
 #define ch5ToLip_Scale  0.45 
 #define ch6ToLip_Scale  0.45 
 
+#define SERVOS_COUNT 19
 
 int ch_1 = 0;
 int ch_2 = 0;
@@ -149,7 +150,7 @@ bool SRV_MAX_forheadRight_changed = false;
 bool SRV_MAX_forheadLeft_changed = false;
 bool SRV_MAX_Jaw_UpDown_changed  = false;
 
-bool servoPositionChanged[48]={
+bool servoPositionChanged[SERVOS_COUNT*3]={
   false, false, false, false, false, false, false, false, 
   false, false, false, false, false, false, false, false, 
 
@@ -157,11 +158,12 @@ bool servoPositionChanged[48]={
   false, false, false, false, false, false, false, false, 
 
   false, false, false, false, false, false, false, false, 
-  false, false, false, false, false, false, false, false
+  false, false, false, false, false, false, false, false,
+  false, false, false, false, false, false
 };
 
 //int servoLimits[17,3]={};
-int servoLimits[64]={
+int servoLimits[SERVOS_COUNT*4]={
   SERVO_MIN_eyeLeftUD        ,
   SERVO_MIN_eyeLeftLR        ,
   SERVO_MIN_eyeRightUD       ,
@@ -228,7 +230,7 @@ int servoLimits[64]={
     SERVO_MID_Jaw_UpDown      
 };
 
-int prevServoLimits[64]={
+int prevServoLimits[SERVOS_COUNT*4]={
   SERVO_MIN_eyeLeftUD        ,
   SERVO_MIN_eyeLeftLR        ,
   SERVO_MIN_eyeRightUD       ,
