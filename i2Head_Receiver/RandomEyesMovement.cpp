@@ -7,9 +7,10 @@ RandomEyesMovement::RandomEyesMovement() {
 }
 
 //void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, int servo_Limits[]) {
-void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, ServoMinMidMaxValues *theServoMinMidMaxValues) {
+void RandomEyesMovement::begin(Adafruit_PWMServoDriver *thePwm1, Adafruit_PWMServoDriver *thePwm2, WritePulsesToDisplay *theWritePulsesToDisplay, ServoMinMidMaxValues *theServoMinMidMaxValues) {
   Serial.println("REM:begin");
-    pPwm = thePwm;
+    pPwm1 = thePwm1;
+    pPwm2 = thePwm2;
     servoMinMidMaxValues = theServoMinMidMaxValues;
     //tft = theTft;
     writePulsesToDisplay = theWritePulsesToDisplay;
@@ -212,10 +213,19 @@ bool RandomEyesMovement::servoSender_write(byte servo_angle, byte servoGroup) {
   }
 
   if(chanelNum1<99) {
-    pPwm->setPWM( chanelNum1, 0, servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL]);
+    if(chanelNum1<16) {
+      pPwm1->setPWM(  chanelNum1    , 0, servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL]);
+    } else {
+      pPwm2->setPWM( (chanelNum1-16), 0, servoMinMidMaxValues->servoLimits[SERVO1_Cur_LBL]);
+    }
   }
+
   if(chanelNum2<99) {
-    pPwm->setPWM( chanelNum2, 0, servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL]);
+    if(chanelNum2<16) {
+      pPwm1->setPWM(  chanelNum2    , 0, servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL]);
+    } else {
+      pPwm2->setPWM( (chanelNum2-16), 0, servoMinMidMaxValues->servoLimits[SERVO2_Cur_LBL]);
+    }
   }
   
   return true;

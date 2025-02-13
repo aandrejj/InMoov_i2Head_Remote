@@ -2,7 +2,7 @@
 #define ch5ToLip_Scale  0.45 
 #define ch6ToLip_Scale  0.45 
 
-#define SERVOS_COUNT 19
+//#define SERVOS_COUNT 19
 
 int ch_1 = 0;
 int ch_2 = 0;
@@ -42,8 +42,13 @@ int servo_eyelidRightUpper_Angle;
 int servo_eyelidRightLower_Angle;
 int servo_eyebrowRight_Angle    ;
 int servo_eyebrowLeft_Angle     ;
-int servo_cheekRight_Angle      ;
-int servo_cheekLeft_Angle       ;
+
+int servo_cheekRight_Angle_Upper;
+int servo_cheekLeft_Angle_Upper ;
+
+int servo_cheekRight_Angle_Lower;
+int servo_cheekLeft_Angle_Lower ;
+
 int servo_upperLip_Angle        ;
 int servo_forheadRight_Angle    ;
 int servo_forheadLeft_Angle     ;
@@ -59,8 +64,13 @@ int servo_eyelidRightUpper_Pwm;
 int servo_eyelidRightLower_Pwm;
 int servo_eyebrowRight_Pwm    ;
 int servo_eyebrowLeft_Pwm     ;
-int servo_cheekRight_Pwm      ;
-int servo_cheekLeft_Pwm       ;
+
+int servo_cheekRight_Lower_Pwm;
+int servo_cheekLeft_Lower_Pwm ;
+
+int servo_cheekRight_Upper_Pwm;
+int servo_cheekLeft_Upper_Pwm ;
+
 int servo_upperLip_Pwm        ;
 int servo_forheadRight_Pwm    ;
 int servo_forheadLeft_Pwm     ;
@@ -76,8 +86,13 @@ int prev_servo_eyelidRightUpper_Pwm;
 int prev_servo_eyelidRightLower_Pwm;
 int prev_servo_eyebrowRight_Pwm    ;
 int prev_servo_eyebrowLeft_Pwm     ;
-int prev_servo_cheekRight_Pwm      ;
-int prev_servo_cheekLeft_Pwm       ;
+
+int prev_servo_cheekRight_Lower_Pwm;
+int prev_servo_cheekLeft_Lower_Pwm ;
+
+int prev_servo_cheekRight_Upper_Pwm;
+int prev_servo_cheekLeft_Upper_Pwm ;
+
 int prev_servo_upperLip_Pwm        ;
 int prev_servo_forheadRight_Pwm    ;
 int prev_servo_forheadLeft_Pwm     ;
@@ -127,8 +142,13 @@ bool SRV_MIN_eyelidRightUpper_changed = false;
 bool SRV_MIN_eyelidRightLower_changed = false;
 bool SRV_MIN_eyebrowRight_changed = false;
 bool SRV_MIN_eyebrowLeft_changed  = false;
-bool SRV_MIN_cheekRight_changed = false;
-bool SRV_MIN_cheekLeft_changed  = false;
+
+bool SRV_MIN_cheekRight_Lower_changed = false;
+bool SRV_MIN_cheekLeft_Lower_changed  = false;
+
+bool SRV_MIN_cheekRight_Upper_changed = false;
+bool SRV_MIN_cheekLeft_Upper_changed  = false;
+
 bool SRV_MIN_upperLip_changed     = false;
 bool SRV_MIN_forheadRight_changed = false;
 bool SRV_MIN_forheadLeft_changed = false;
@@ -174,8 +194,16 @@ int servoLimits[SERVOS_COUNT*4]={
   SERVO_MIN_eyelidRightLower ,
   SERVO_MIN_eyebrowRight     ,
   SERVO_MIN_eyebrowLeft      ,
-  SERVO_MIN_cheekRight       ,
-  SERVO_MIN_cheekLeft        ,
+                              
+//SERVO_MIN_cheekRight      ,
+//SERVO_MIN_cheekLeft       ,
+
+  SERVO_MIN_cheekRight_Upper,
+  SERVO_MIN_cheekLeft_Upper ,
+
+  SERVO_MIN_cheekRight_Lower,
+  SERVO_MIN_cheekLeft_Lower ,
+
   SERVO_MIN_upperLip         ,
   SERVO_MIN_forheadRight     ,
   SERVO_MIN_forheadLeft      ,
@@ -190,8 +218,16 @@ int servoLimits[SERVOS_COUNT*4]={
     SERVO_MID_eyelidRightLower,
     SERVO_MID_eyebrowRight    ,
     SERVO_MID_eyebrowLeft     ,
-    SERVO_MID_cheekRight      ,
-    SERVO_MID_cheekLeft       ,
+
+    //SERVO_MID_cheekRight      ,
+    //SERVO_MID_cheekLeft       ,
+
+    SERVO_MID_cheekRight_Upper,
+    SERVO_MID_cheekLeft_Upper ,
+
+    SERVO_MID_cheekRight_Lower,
+    SERVO_MID_cheekLeft_Lower ,
+
     SERVO_MID_upperLip        ,
     SERVO_MID_forheadRight    ,
     SERVO_MID_forheadLeft     ,
@@ -206,8 +242,16 @@ int servoLimits[SERVOS_COUNT*4]={
   SERVO_MAX_eyelidRightLower,
   SERVO_MAX_eyebrowRight    ,
   SERVO_MAX_eyebrowLeft     ,
-  SERVO_MAX_cheekRight      ,
-  SERVO_MAX_cheekLeft       ,
+
+  //SERVO_MAX_cheekRight      ,
+  //SERVO_MAX_cheekLeft       ,
+
+  SERVO_MAX_cheekRight_Upper,
+  SERVO_MAX_cheekLeft_Upper ,
+
+  SERVO_MAX_cheekRight_Lower,
+  SERVO_MAX_cheekLeft_Lower ,
+
   SERVO_MAX_upperLip        ,
   SERVO_MAX_forheadRight    ,
   SERVO_MAX_forheadLeft     ,
@@ -222,8 +266,16 @@ int servoLimits[SERVOS_COUNT*4]={
     SERVO_MID_eyelidRightLower,
     SERVO_MID_eyebrowRight    ,
     SERVO_MID_eyebrowLeft     ,
-    SERVO_MID_cheekRight      ,
-    SERVO_MID_cheekLeft       ,
+
+    //SERVO_MID_cheekRight      ,
+    //SERVO_MID_cheekLeft       ,
+
+    SERVO_MID_cheekRight_Upper,
+    SERVO_MID_cheekLeft_Upper ,
+
+    SERVO_MID_cheekRight_Lower,
+    SERVO_MID_cheekLeft_Lower ,
+
     SERVO_MID_upperLip        ,
     SERVO_MID_forheadRight    ,
     SERVO_MID_forheadLeft     ,
@@ -241,8 +293,16 @@ int prevServoLimits[SERVOS_COUNT*4]={
   SERVO_MIN_eyelidRightLower ,
   SERVO_MIN_eyebrowRight     ,
   SERVO_MIN_eyebrowLeft      ,
-  SERVO_MIN_cheekRight       ,
-  SERVO_MIN_cheekLeft        ,
+                              
+//SERVO_MIN_cheekRight      ,
+//SERVO_MIN_cheekLeft       ,
+
+  SERVO_MIN_cheekRight_Upper,
+  SERVO_MIN_cheekLeft_Upper ,
+
+  SERVO_MIN_cheekRight_Lower,
+  SERVO_MIN_cheekLeft_Lower ,
+
   SERVO_MIN_upperLip         ,
   SERVO_MIN_forheadRight     ,
   SERVO_MIN_forheadLeft      ,
@@ -257,8 +317,16 @@ int prevServoLimits[SERVOS_COUNT*4]={
    SERVO_MID_eyelidRightLower,
    SERVO_MID_eyebrowRight    ,
    SERVO_MID_eyebrowLeft     ,
-   SERVO_MID_cheekRight      ,
-   SERVO_MID_cheekLeft       ,
+
+    //SERVO_MID_cheekRight      ,
+    //SERVO_MID_cheekLeft       ,
+
+    SERVO_MID_cheekRight_Upper,
+    SERVO_MID_cheekLeft_Upper ,
+
+    SERVO_MID_cheekRight_Lower,
+    SERVO_MID_cheekLeft_Lower ,
+
    SERVO_MID_upperLip        ,
    SERVO_MID_forheadRight    ,
    SERVO_MID_forheadLeft     ,
@@ -273,8 +341,16 @@ int prevServoLimits[SERVOS_COUNT*4]={
   SERVO_MAX_eyelidRightLower,
   SERVO_MAX_eyebrowRight    ,
   SERVO_MAX_eyebrowLeft     ,
-  SERVO_MAX_cheekRight      ,
-  SERVO_MAX_cheekLeft       ,
+
+  //SERVO_MAX_cheekRight      ,
+  //SERVO_MAX_cheekLeft       ,
+
+  SERVO_MAX_cheekRight_Upper,
+  SERVO_MAX_cheekLeft_Upper ,
+
+  SERVO_MAX_cheekRight_Lower,
+  SERVO_MAX_cheekLeft_Lower ,
+
   SERVO_MAX_upperLip        ,
   SERVO_MAX_forheadRight    ,
   SERVO_MAX_forheadLeft     ,
@@ -289,8 +365,16 @@ int prevServoLimits[SERVOS_COUNT*4]={
    SERVO_MID_eyelidRightLower,
    SERVO_MID_eyebrowRight    ,
    SERVO_MID_eyebrowLeft     ,
-   SERVO_MID_cheekRight      ,
-   SERVO_MID_cheekLeft       ,
+
+    //SERVO_MID_cheekRight      ,
+    //SERVO_MID_cheekLeft       ,
+
+    SERVO_MID_cheekRight_Upper,
+    SERVO_MID_cheekLeft_Upper ,
+
+    SERVO_MID_cheekRight_Lower,
+    SERVO_MID_cheekLeft_Lower ,
+
    SERVO_MID_upperLip        ,
    SERVO_MID_forheadRight    ,
    SERVO_MID_forheadLeft     ,

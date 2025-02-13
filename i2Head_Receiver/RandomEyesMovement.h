@@ -46,11 +46,12 @@ class RandomEyesMovement{
 	RandomEyesMovement();
   //Stream *theStream
 	//void begin(Adafruit_PWMServoDriver *thePwm, ST7735 *theTft, int[] );
-  void begin(Adafruit_PWMServoDriver *thePwm, WritePulsesToDisplay *theWritePulsesToDisplay, ServoMinMidMaxValues *theServoMinMidMaxValues);
+  void begin(Adafruit_PWMServoDriver *thePwm1, Adafruit_PWMServoDriver *thePwm2, WritePulsesToDisplay *theWritePulsesToDisplay, ServoMinMidMaxValues *theServoMinMidMaxValues);
 	//void beginDisplay(ST7735 *theTft );
 	
   //Stream *_stream;
-  Adafruit_PWMServoDriver * pPwm;
+  Adafruit_PWMServoDriver * pPwm1;
+  Adafruit_PWMServoDriver * pPwm2;
   ServoMinMidMaxValues *servoMinMidMaxValues;
 
   // ST7735 * tft;

@@ -20,11 +20,12 @@
 
 #define i01_head_cheekRight_Lower   12//10 
 #define i01_head_cheekLeft_Lower    13//11 
-//      the upper lip             
-#define i01_head_upperLip           14//12 
 //      the for head              
-#define i01_head_forheadRight       15//13 
-#define i01_head_forheadLeft        16//14
+#define i01_head_forheadRight       14//13 
+#define i01_head_forheadLeft        15//14
+
+//      the upper lip             
+#define i01_head_upperLip           16//12 
 
 #define Jaw_UpDown                  17//15
 #define Head_LeftRight              18
