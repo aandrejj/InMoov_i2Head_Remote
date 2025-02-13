@@ -54,7 +54,7 @@
   #define Baud 9600    // Serial monitor
 #endif
 
-uint8_t spacing = 8;
+uint8_t spacing =  8;//char_height_y;
 uint8_t yPos = 2;
 uint8_t servoNum = 0;
 
@@ -396,9 +396,12 @@ void writeConfiguation()
 
 void prepareServoForm(){
   Serial.println("prepareServoForm: Write servo numbers 1.for {for{}} start");
-//Write servo numbers 
-  for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
-    for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
+  servoNum = 0;
+  yPos = 2;
+  //Write servo numbers 
+  for (uint8_t count = 0; count <= (SERVOS_COUNT - 1); count ++){ 
+  //for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
+    //for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
       char numRead[2];
       char combined[30]= {0};
       dtostrf(servoNum, 1, 0, numRead);
@@ -406,11 +409,10 @@ void prepareServoForm(){
       strcat(combined, numRead);
       writePulsesToDisplay.drawString(0, yPos, combined, WHITE);
       //writePulsesToDisplay.drawString((((strlen(servo) + 1)) * 8), yPos, colon, WHITE);
-      
       servoNum ++;
       yPos += spacing;    
-    }
-    yPos += (2*LEFT_ARROW_STEP); //8;
+    //}
+    //yPos += (2*LEFT_ARROW_STEP); //8;
   }
   Serial.println("sprepareServoForm: 1.for {for{}} done");
 
@@ -419,17 +421,18 @@ void prepareServoForm(){
   servoNum = 0;
   yPos = 2;
   //servo ="S".....
-  for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
-    for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
-        writePulsesToDisplay.writeMINPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum]);//, true);
-        writePulsesToDisplay.writeMIDPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum+16]);//, true);
-        writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum+48], true);
-        writePulsesToDisplay.writeMAXPulsesToDisplay((count*LEFT_ARROW_STEP)+i, servoMinMidMaxValues.servoLimits[servoNum+32]);//, true);
-        i_str = String(i);
+  for (uint8_t count = 0; count <= (SERVOS_COUNT - 1); count ++){ 
+  //for (uint8_t count = 0; count <= ((16/LEFT_ARROW_STEP) - 1); count ++){ 
+    //for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
+        writePulsesToDisplay.writeMINPulsesToDisplay ((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum]);//, true);
+        writePulsesToDisplay.writeMIDPulsesToDisplay ((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum+(SERVOS_COUNT)]);//, true);
+        writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum+(SERVOS_COUNT*3)], true);
+        writePulsesToDisplay.writeMAXPulsesToDisplay ((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum+(SERVOS_COUNT*2)]);//, true);
+        //i_str = String(i);
         servoNum ++;
         yPos += spacing;    
-      }
-    yPos += (2*LEFT_ARROW_STEP); //8;
+      //}
+    //yPos += (2*LEFT_ARROW_STEP); //8;
   }
   Serial.println("prepareServoForm: 2.for {for{}} done");
   writePulsesToDisplay.writeArrow_activeServoSet (0);

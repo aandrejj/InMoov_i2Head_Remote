@@ -70,7 +70,7 @@ void WritePulsesToDisplay::writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t
 void WritePulsesToDisplay::writeOneFieldToDisplay (uint8_t chanelNum,uint8_t form_label_Min_Mid_Max, uint16_t servo_Pwm, bool showDebug){
   uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
   uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
-  uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*8)+2)) + (modulo*8);
+  uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*char_height_y)+0)) + (modulo*char_height_y); 
 
   if(showDebug == true) {
     Serial.print("WritePulsesToDisplay: ");
@@ -119,8 +119,11 @@ void WritePulsesToDisplay::writeOneFieldToDisplay_innerPart (uint8_t xPos, uint1
 }
 
 void WritePulsesToDisplay::writeArrow_activeServoSet (byte activeServoSet) {
-      tft.fillRect((128-(LEFT_ARROW_SIZE*8)), 0, (LEFT_ARROW_SIZE*8), 160, BLACK);
-      tft.drawString((128-(LEFT_ARROW_SIZE*8)), ((activeServoSet * ((2+8) * LEFT_ARROW_STEP))+3), "<", WHITE, LEFT_ARROW_SIZE);
+      //tft.fillRect((128-(LEFT_ARROW_SIZE*8)), 0, (LEFT_ARROW_SIZE*8), 160, BLACK);
+      //tft.drawString((128-(LEFT_ARROW_SIZE*8)), ((activeServoSet * ((2+8) * LEFT_ARROW_STEP))+3), "<", WHITE, LEFT_ARROW_SIZE);
+      tft.fillRect((128-(LEFT_ARROW_SIZE*char_width_x)), 0, (LEFT_ARROW_SIZE*char_height_y), 160, BLACK);
+      tft.drawString((128-(LEFT_ARROW_SIZE*char_width_x)), ((activeServoSet * ((char_height_y+0) * LEFT_ARROW_STEP))+1), "<", WHITE, LEFT_ARROW_SIZE);
+
 }
 
 void WritePulsesToDisplay::drawString(uint8_t x, uint8_t y, char *c, uint16_t color, uint8_t size=1) {
