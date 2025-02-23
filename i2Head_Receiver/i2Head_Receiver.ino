@@ -143,6 +143,9 @@ bool RF_Serial_data_changed = false;
 bool remoteDataReceived = false;
 bool serialDataReceived = false;
 
+bool rf_connected = false;
+bool prev_rf_connected = false;
+
 String i_str ="";
 
 //-------------------------------setup------------------------------------
@@ -242,6 +245,12 @@ void loop()
     if(remoteDataReceived == true) {
       previousSafetyMillis = currentMillis; 
       //Serial.println("s1min: "+String(mydata_received.s1min)+", s1curr: "+String(mydata_received.s1curr)+", s1mid: "+String(mydata_received.s1mid)+", s1max: "+String(mydata_received.s1max)+", servoSet: "+String(mydata_received.servoSet)+", devType:"+String(mydata_received.devType));
+      rf_connected = true;
+      if(prev_rf_connected != rf_connected) {
+        Serial.println("loop:----------------------------- Connected to RemoteController------------------------------------------------------");
+      }
+      prev_rf_connected = rf_connected;
+
       if (mydata_received.devType == 0) // mode:  0 = fourSticksController (8 chanels) ,   1 = ServoConfigurator (16 chanels) , 2 = MinMaxServoConfig (min max for 2 chanels)
       {
         constrain_RfData_0_255();
@@ -286,10 +295,13 @@ void loop()
           } else {
             if(mydata_received.switchPos == 1) {
               if(previousSwitchPos1 != mydata_received.switchPos) {
+                Serial.println("loop: switchPos CHANGED from "+String(previousSwitchPos1)+" to "+String(mydata_received.switchPos)+",  -> reset all Servos to MID");
                 resetAllServosToMidPos();
               }
             } else if(mydata_received.switchPos == 2) {
-              //Serial.println("loop: switchPos ==2 -> starting randomEyesMovement.moveEyesRandomly...");
+              if(previousSwitchPos1 != mydata_received.switchPos) {
+                Serial.println("loop: switchPos CHANGED from "+String(previousSwitchPos1)+" to "+String(mydata_received.switchPos)+",  -> starting randomEyesMovement.moveEyesRandomly...");
+              }
               randomEyesMovement.moveEyesRandomly(currentMillis,"With RF");
             }
             previousSwitchPos1 = mydata_received.switchPos;
@@ -299,6 +311,12 @@ void loop()
         Serial.println("Unknown devType. mydata_received.devType = "+String(mydata_received.devType));
       }
     } else  if(currentMillis - previousSafetyMillis > 1000) {         // safeties
+      rf_connected = false;
+      if(prev_rf_connected != rf_connected) {
+        Serial.println("loop:----------------------------- NOT Connected to RemoteController------------------------------------------------------");
+      }
+      prev_rf_connected = rf_connected;
+
       #ifdef RANDOM_EYES_MOVEMENT
         randomEyesMovement.moveEyesRandomly(currentMillis,"No RF");
       #endif
@@ -344,7 +362,7 @@ void resetAllServosToMidPos(){
   RF_Serial_data_changed == true;
   copy_RF_Data_toPwmData();
   sendData_toPwmDriver();
-
+  Serial.println("resetAllServosToMidPos: Ok, End");
 }
 
 void migrateConfiguation()
@@ -499,7 +517,7 @@ void prepareServoForm(){
     //for (uint8_t i = 0; i <=(LEFT_ARROW_STEP - 1); i ++){
         writePulsesToDisplay.writeMINPulsesToDisplay ((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum]);//, true);
         writePulsesToDisplay.writeMIDPulsesToDisplay ((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum+(SERVOS_COUNT)]);//, true);
-        writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum+(SERVOS_COUNT*3)], true);
+        writePulsesToDisplay.writeCurrPulsesToDisplay((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum+(SERVOS_COUNT*3)]);//, true);
         writePulsesToDisplay.writeMAXPulsesToDisplay ((count*LEFT_ARROW_STEP), servoMinMidMaxValues.servoLimits[servoNum+(SERVOS_COUNT*2)]);//, true);
         //i_str = String(i);
         servoNum ++;
@@ -582,6 +600,7 @@ void compute_from_SerialData_toAngleData()
   servo_forheadRight_Angle     = constrain(my_serial_data_received.s13, 0, 255);
   servo_forheadLeft_Angle      = constrain(my_serial_data_received.s14, 0, 255);
   servo_Jaw_UpDown_Angle       = constrain(my_serial_data_received.s15, 0, 255);
+  servo_Head_LeftRight_Angle   = constrain(my_serial_data_received.s15, 0, 255);
 
 }
 
@@ -611,6 +630,7 @@ void compute_fromRfData_toAngleData()
   servo_forheadRight_Angle    = ch[6] + (127 - ch[5]);
   servo_forheadLeft_Angle     = ch[6] - (127 - ch[5]);
   servo_Jaw_UpDown_Angle      = 0;
+  servo_Head_LeftRight_Angle  = 0;
 }
 
 void constrain_RfData_0_255() {
@@ -649,6 +669,7 @@ void constrain_allServoAngles_0_255() {
   servo_forheadRight_Angle     = constrain(servo_forheadRight_Angle    , 0, 255);
   servo_forheadLeft_Angle      = constrain(servo_forheadLeft_Angle     , 0, 255);
   servo_Jaw_UpDown_Angle       = constrain(servo_Jaw_UpDown_Angle      , 0, 255);
+  servo_Head_LeftRight_Angle   = constrain(servo_Head_LeftRight_Angle  , 0, 255);
 }
 
 void convert_constrain_allServoAngles_0_1023() {
@@ -673,6 +694,7 @@ void convert_constrain_allServoAngles_0_1023() {
   servo_forheadRight_Pwm     = constrain(servo_forheadRight_Angle    , 0, 1023);
   servo_forheadLeft_Pwm      = constrain(servo_forheadLeft_Angle     , 0, 1023);
   servo_Jaw_UpDown_Pwm       = constrain(servo_Jaw_UpDown_Angle      , 0, 1023);
+  servo_Head_LeftRight_Pwm   = constrain(servo_Head_LeftRight_Angle  , 0, 1023);
 }
 
 void convert_allAngle_to_Pwm_Min_Center_Max(){
@@ -697,6 +719,7 @@ void convert_allAngle_to_Pwm_Min_Center_Max(){
       servo_forheadRight_Pwm    = (servo_forheadRight_Angle     < 128 ? map(servo_forheadRight_Angle     , 0, 127, SERVO_MIN_forheadRight,     SERVO_MID_forheadRight)    : map(servo_forheadRight_Angle    , 128, 255, SERVO_MID_forheadRight,     SERVO_MAX_forheadRight));
       servo_forheadLeft_Pwm     = (servo_forheadLeft_Angle      < 128 ? map(servo_forheadLeft_Angle      , 0, 127, SERVO_MIN_forheadLeft,      SERVO_MID_forheadLeft)     : map(servo_forheadLeft_Angle     , 128, 255, SERVO_MID_forheadLeft,      SERVO_MAX_forheadLeft));
       servo_Jaw_UpDown_Pwm      = (servo_Jaw_UpDown_Angle       < 128 ? map(servo_Jaw_UpDown_Angle       , 0, 127, SERVO_MIN_Jaw_UpDown,       SERVO_MID_Jaw_UpDown)      : map(servo_Jaw_UpDown_Angle      , 128, 255, SERVO_MID_Jaw_UpDown,       SERVO_MAX_Jaw_UpDown));
+      servo_Head_LeftRight_Pwm  = (servo_Head_LeftRight_Angle   < 128 ? map(servo_Head_LeftRight_Angle   , 0, 127, SERVO_MIN_Head_LeftRight,   SERVO_MID_Head_LeftRight)  : map(servo_Head_LeftRight_Angle  , 128, 255, SERVO_MID_Head_LeftRight,   SERVO_MAX_Head_LeftRight));
 }
 
 void sendData_toPwmDriver() {
@@ -723,60 +746,64 @@ void sendData_toPwmDriver() {
   pwm1.setPWM( i01_head_forheadRight    , 0, servo_forheadRight_Pwm);
   pwm1.setPWM( i01_head_forheadLeft     , 0, servo_forheadLeft_Pwm);
 
-  pwm2.setPWM( i01_head_upperLip-16    , 0, servo_upperLip_Pwm);
-  pwm2.setPWM( Jaw_UpDown       -16    , 0, servo_Jaw_UpDown_Pwm);
+  pwm2.setPWM( i01_head_upperLip-16     , 0, servo_upperLip_Pwm);
+  pwm2.setPWM( Jaw_UpDown       -16     , 0, servo_Jaw_UpDown_Pwm);
+  pwm2.setPWM( Head_LeftRight   -16     , 0, servo_Head_LeftRight_Pwm);
   
 }
 
 void send_RF_Data_toPwmDriver() {
-  pwm1.setPWM( i01_head_eyeLeftUD       , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeLeftUD       +48]);
-  pwm1.setPWM( i01_head_eyeLeftLR       , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeLeftLR       +48]);
-  pwm1.setPWM( i01_head_eyeRightUD      , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeRightUD      +48]);
-  pwm1.setPWM( i01_head_eyeRightLR      , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeRightLR      +48]);
-  pwm1.setPWM( i01_head_eyelidLeftUpper , 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidLeftUpper +48]);
-  pwm1.setPWM( i01_head_eyelidLeftLower , 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidLeftLower +48]);
-  pwm1.setPWM( i01_head_eyelidRightUpper, 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidRightUpper+48]);
-  pwm1.setPWM( i01_head_eyelidRightLower, 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidRightLower+48]);
-  pwm1.setPWM( i01_head_eyebrowRight    , 0, servoMinMidMaxValues.servoLimits[i01_head_eyebrowRight    +48]);
-  pwm1.setPWM( i01_head_eyebrowLeft     , 0, servoMinMidMaxValues.servoLimits[i01_head_eyebrowLeft     +48]);
+  pwm1.setPWM( i01_head_eyeLeftUD       , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeLeftUD       + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyeLeftLR       , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeLeftLR       + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyeRightUD      , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeRightUD      + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyeRightLR      , 0, servoMinMidMaxValues.servoLimits[i01_head_eyeRightLR      + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyelidLeftUpper , 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidLeftUpper + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyelidLeftLower , 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidLeftLower + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyelidRightUpper, 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidRightUpper+ (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyelidRightLower, 0, servoMinMidMaxValues.servoLimits[i01_head_eyelidRightLower+ (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyebrowRight    , 0, servoMinMidMaxValues.servoLimits[i01_head_eyebrowRight    + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_eyebrowLeft     , 0, servoMinMidMaxValues.servoLimits[i01_head_eyebrowLeft     + (SERVOS_COUNT*3)]);
   
-  pwm1.setPWM( i01_head_cheekRight_Upper, 0, servoMinMidMaxValues.servoLimits[i01_head_cheekRight_Upper+48]);
-  pwm1.setPWM( i01_head_cheekLeft_Upper , 0, servoMinMidMaxValues.servoLimits[i01_head_cheekLeft_Upper +48]);
+  pwm1.setPWM( i01_head_cheekRight_Upper, 0, servoMinMidMaxValues.servoLimits[i01_head_cheekRight_Upper+ (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_cheekLeft_Upper , 0, servoMinMidMaxValues.servoLimits[i01_head_cheekLeft_Upper + (SERVOS_COUNT*3)]);
   
-  pwm1.setPWM( i01_head_cheekRight_Lower, 0, servoMinMidMaxValues.servoLimits[i01_head_cheekRight_Lower+48]);
-  pwm1.setPWM( i01_head_cheekLeft_Lower , 0, servoMinMidMaxValues.servoLimits[i01_head_cheekLeft_Lower +48]);
+  pwm1.setPWM( i01_head_cheekRight_Lower, 0, servoMinMidMaxValues.servoLimits[i01_head_cheekRight_Lower+ (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_cheekLeft_Lower , 0, servoMinMidMaxValues.servoLimits[i01_head_cheekLeft_Lower + (SERVOS_COUNT*3)]);
   
-  pwm1.setPWM( i01_head_forheadRight    , 0, servoMinMidMaxValues.servoLimits[i01_head_forheadRight    +48]);
-  pwm1.setPWM( i01_head_forheadLeft     , 0, servoMinMidMaxValues.servoLimits[i01_head_forheadLeft     +48]);
+  pwm1.setPWM( i01_head_forheadRight    , 0, servoMinMidMaxValues.servoLimits[i01_head_forheadRight    + (SERVOS_COUNT*3)]);
+  pwm1.setPWM( i01_head_forheadLeft     , 0, servoMinMidMaxValues.servoLimits[i01_head_forheadLeft     + (SERVOS_COUNT*3)]);
 
-  pwm2.setPWM(i01_head_upperLip        , 0, servoMinMidMaxValues.servoLimits[i01_head_upperLip-16    +48]);
-  pwm2.setPWM(Jaw_UpDown               , 0, servoMinMidMaxValues.servoLimits[Jaw_UpDown       -16    +48]);
+  pwm2.setPWM(i01_head_upperLip         , 0, servoMinMidMaxValues.servoLimits[i01_head_upperLip-16     + (SERVOS_COUNT*3)]);
+  pwm2.setPWM(Jaw_UpDown                , 0, servoMinMidMaxValues.servoLimits[Jaw_UpDown       -16     + (SERVOS_COUNT*3)]);
+  pwm2.setPWM(Head_LeftRight            , 0, servoMinMidMaxValues.servoLimits[Head_LeftRight   -16     + (SERVOS_COUNT*3)]);
+
 }
 
 void copy_RF_Data_toPwmData() {
-  servo_eyeLeftUD_Pwm       = servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftUD       +48)];
-  servo_eyeLeftLR_Pwm       = servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftLR       +48)];
-  servo_eyeRightUD_Pwm      = servoMinMidMaxValues.servoLimits[(i01_head_eyeRightUD      +48)];
-  servo_eyeRightLR_Pwm      = servoMinMidMaxValues.servoLimits[(i01_head_eyeRightLR      +48)];
-  servo_eyelidLeftUpper_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftUpper +48)];
-  servo_eyelidLeftLower_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftLower +48)];
-  servo_eyelidRightUpper_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightUpper+48)];
-  servo_eyelidRightLower_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightLower+48)];
-  servo_eyebrowRight_Pwm    = servoMinMidMaxValues.servoLimits[(i01_head_eyebrowRight    +48)];
-  servo_eyebrowLeft_Pwm     = servoMinMidMaxValues.servoLimits[(i01_head_eyebrowLeft     +48)];
+  servo_eyeLeftUD_Pwm       = servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftUD       + (SERVOS_COUNT*3))];
+  servo_eyeLeftLR_Pwm       = servoMinMidMaxValues.servoLimits[(i01_head_eyeLeftLR       + (SERVOS_COUNT*3))];
+  servo_eyeRightUD_Pwm      = servoMinMidMaxValues.servoLimits[(i01_head_eyeRightUD      + (SERVOS_COUNT*3))];
+  servo_eyeRightLR_Pwm      = servoMinMidMaxValues.servoLimits[(i01_head_eyeRightLR      + (SERVOS_COUNT*3))];
+  servo_eyelidLeftUpper_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftUpper + (SERVOS_COUNT*3))];
+  servo_eyelidLeftLower_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_eyelidLeftLower + (SERVOS_COUNT*3))];
+  servo_eyelidRightUpper_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightUpper+ (SERVOS_COUNT*3))];
+  servo_eyelidRightLower_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_eyelidRightLower+ (SERVOS_COUNT*3))];
+  servo_eyebrowRight_Pwm    = servoMinMidMaxValues.servoLimits[(i01_head_eyebrowRight    + (SERVOS_COUNT*3))];
+  servo_eyebrowLeft_Pwm     = servoMinMidMaxValues.servoLimits[(i01_head_eyebrowLeft     + (SERVOS_COUNT*3))];
 
-  servo_cheekRight_Upper_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_cheekRight_Upper+48)];
-  servo_cheekLeft_Upper_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_cheekLeft_Upper +48)];
+  servo_cheekRight_Upper_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_cheekRight_Upper+ (SERVOS_COUNT*3))];
+  servo_cheekLeft_Upper_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_cheekLeft_Upper + (SERVOS_COUNT*3))];
 
-  servo_cheekRight_Lower_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_cheekRight_Lower+48)];
-  servo_cheekLeft_Lower_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_cheekLeft_Lower +48)];
+  servo_cheekRight_Lower_Pwm= servoMinMidMaxValues.servoLimits[(i01_head_cheekRight_Lower+ (SERVOS_COUNT*3))];
+  servo_cheekLeft_Lower_Pwm = servoMinMidMaxValues.servoLimits[(i01_head_cheekLeft_Lower + (SERVOS_COUNT*3))];
 
-  servo_forheadRight_Pwm    = servoMinMidMaxValues.servoLimits[(i01_head_forheadRight    +48)];
-  servo_forheadLeft_Pwm     = servoMinMidMaxValues.servoLimits[(i01_head_forheadLeft     +48)];
+  servo_forheadRight_Pwm    = servoMinMidMaxValues.servoLimits[(i01_head_forheadRight    + (SERVOS_COUNT*3))];
+  servo_forheadLeft_Pwm     = servoMinMidMaxValues.servoLimits[(i01_head_forheadLeft     + (SERVOS_COUNT*3))];
 
-  servo_upperLip_Pwm        = servoMinMidMaxValues.servoLimits[(i01_head_upperLip        +48)];
+  servo_upperLip_Pwm        = servoMinMidMaxValues.servoLimits[(i01_head_upperLip        + (SERVOS_COUNT*3))];
 
-  servo_Jaw_UpDown_Pwm      = servoMinMidMaxValues.servoLimits[(Jaw_UpDown               +48)];
+  servo_Jaw_UpDown_Pwm      = servoMinMidMaxValues.servoLimits[(Jaw_UpDown               + (SERVOS_COUNT*3))];
+  servo_Head_LeftRight_Pwm  = servoMinMidMaxValues.servoLimits[(Head_LeftRight           + (SERVOS_COUNT*3))];
 }
 
 void show_PwmData_toDebug() {
@@ -877,7 +904,26 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
     Serial.print("RfSerial_Data_Changed_innerPart: servoIndex="+String(servoIndex)+", ");
     Serial.print("displayChanelNumber="+ String(displayChanelNumber)+ ", ");
     Serial.print("mydata_received_value ="+ String(mydata_received_value)+", ");
-    Serial.print("form_label_Min_Mid_Max="+String(form_label_Min_Mid_Max)+" , ");
+    Serial.print("form_label_Min_Mid_Max=" + 
+                  String(
+                          (
+                            (form_label_Min_Mid_Max==LABEL_FORM_MIN) ? 
+                            ("MIN") : 
+                            (
+                              (form_label_Min_Mid_Max==LABEL_FORM_MID) ? 
+                              ("MID") :
+                              (
+                                (form_label_Min_Mid_Max==LABEL_FORM_MAX) ? 
+                                ("MAX") : 
+                                (
+                                  (form_label_Min_Mid_Max==LABEL_FORM_CUR) ? 
+                                  ("Curr"): 
+                                  (String(form_label_Min_Mid_Max))
+                                )
+                              )
+                            )
+                          )
+                        )+" , ");
     Serial.print("servoMinMidMaxValues.prevServoLimits["+String(servoIndex)+"] = "+ String(servoMinMidMaxValues.prevServoLimits[servoIndex])+" , ");
     Serial.print("servoMinMidMaxValues.servoLimits["+String(servoIndex)+"] = "+ String(servoMinMidMaxValues.servoLimits[servoIndex]));
     Serial.println(".");
@@ -890,7 +936,7 @@ bool RfSerial_Data_Changed_innerPart(int16_t servoIndex, int16_t displayChanelNu
     else if(form_label_Min_Mid_Max == LABEL_FORM_MAX) {
       writePulsesToDisplay.writeMAXPulsesToDisplay( displayChanelNumber, servoMinMidMaxValues.servoLimits[servoIndex]);
     }
-    else {
+    else  if(form_label_Min_Mid_Max == LABEL_FORM_CUR){
       writePulsesToDisplay.writeCurrPulsesToDisplay( displayChanelNumber, servoMinMidMaxValues.servoLimits[servoIndex]);
     }
     //writeOneFieldToDisplay(displayChanelNumber, form_label_Min_Mid_Max, servoMinMidMaxValues.servoLimits[servoIndex]); 
@@ -929,9 +975,9 @@ bool RfSerial_Data_changed() {
               (map(mydata_received.s1curr,   0, 127, servoMinMidMaxValues.servoLimits[(mydata_received.servoSet)           ], servoMinMidMaxValues.servoLimits[(mydata_received.servoSet) + (SERVOS_COUNT)]) ) 
             : (map(mydata_received.s1curr, 128, 255, servoMinMidMaxValues.servoLimits[(mydata_received.servoSet) + (SERVOS_COUNT)], servoMinMidMaxValues.servoLimits[(mydata_received.servoSet) + (SERVOS_COUNT*2)]) );
 
-        servoPositionChanged[(mydata_received.servoSet+(SERVOS_COUNT*3))] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+(SERVOS_COUNT*3)), mydata_received.servoSet, extrapolatedCurrentValue, LABEL_FORM_MAX+1);
+        servoPositionChanged[(mydata_received.servoSet+(SERVOS_COUNT*3))] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+(SERVOS_COUNT*3)), mydata_received.servoSet, extrapolatedCurrentValue, LABEL_FORM_CUR);
       #else
-        servoPositionChanged[(mydata_received.servoSet+(SERVOS_COUNT*3))] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+(SERVOS_COUNT*3)), mydata_received.servoSet, mydata_received.s1curr, LABEL_FORM_MAX+1);
+        servoPositionChanged[(mydata_received.servoSet+(SERVOS_COUNT*3))] = RfSerial_Data_Changed_innerPart((mydata_received.servoSet+(SERVOS_COUNT*3)), mydata_received.servoSet, mydata_received.s1curr, LABEL_FORM_CUR);
       #endif
     }
 

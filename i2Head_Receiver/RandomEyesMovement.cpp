@@ -71,7 +71,7 @@ void RandomEyesMovement::lookAtRandomDirection(bool generateRandomDirection, lon
         UpDownState = random(minUpDown, maxUpDown);
         LeftRightState = random(30, 220);
         lidMod = ( 60 - UpDownState)/2;
-        Serial.print(", UD= "+String(UpDownState)+" LR= "+String(LeftRightState)+" lidMod="+String(lidMod)+" ");
+        Serial.println(", UD= "+String(UpDownState)+" LR= "+String(LeftRightState)+" lidMod="+String(lidMod)+" ");
         RandomEyesMovement::lookUpDown_write(UpDownState);
         RandomEyesMovement::lookLeftRight_write(LeftRightState);
     }

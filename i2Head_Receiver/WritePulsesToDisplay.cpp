@@ -52,36 +52,58 @@ void WritePulsesToDisplay::writeMIDPulsesToDisplay (uint8_t chanelNum, uint16_t 
 }
 
 void WritePulsesToDisplay::writeMAXPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
-  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, (LABEL_FORM_MAX+1) , servo_Pwm, showDebug);
+  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, (LABEL_FORM_MAX) , servo_Pwm, showDebug);
 }
 
 void WritePulsesToDisplay::writeMAXPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, LABEL_FORM_MAX+1, servo_Pwm, false);
+  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, LABEL_FORM_MAX, servo_Pwm, false);
 }
 
 void WritePulsesToDisplay::writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm, bool showDebug){
-  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, 2, servo_Pwm, showDebug);
+  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, LABEL_FORM_CUR, servo_Pwm, showDebug);
 }
 
 void WritePulsesToDisplay::writeCurrPulsesToDisplay (uint8_t chanelNum, uint16_t servo_Pwm){
-  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, 2, servo_Pwm, false);
+  WritePulsesToDisplay::writeOneFieldToDisplay (chanelNum, LABEL_FORM_CUR, servo_Pwm, false);
 }
 
 void WritePulsesToDisplay::writeOneFieldToDisplay (uint8_t chanelNum,uint8_t form_label_Min_Mid_Max, uint16_t servo_Pwm, bool showDebug){
   uint8_t modulo = chanelNum % LEFT_ARROW_STEP;
   uint8_t div_result =chanelNum / LEFT_ARROW_STEP;
   uint8_t yPos = 2 + (div_result * ((LEFT_ARROW_STEP*char_height_y)+0)) + (modulo*char_height_y); 
+  uint8_t xPos = (((char_shift_x + (form_label_Min_Mid_Max*3)) * char_width_x));
 
   if(showDebug == true) {
     Serial.print("WritePulsesToDisplay: ");
-    Serial.print("chanelNum:"+String(chanelNum)+", form_label_Min_Mid_Max:"+String(form_label_Min_Mid_Max)+", servo_Pwm:"+String(servo_Pwm)+",  ");
+    Serial.print("chanelNum:"+String(chanelNum)+", ");
+    Serial.print("form_label_Min_Mid_Max= " + 
+              String(
+                      (
+                        (form_label_Min_Mid_Max==LABEL_FORM_MIN) ? 
+                        ("MIN") : 
+                        (
+                          (form_label_Min_Mid_Max==LABEL_FORM_MID) ? 
+                          ("MID") :
+                          (
+                            (form_label_Min_Mid_Max==LABEL_FORM_MAX) ? 
+                            ("MAX") : 
+                            (
+                              (form_label_Min_Mid_Max==LABEL_FORM_CUR) ? 
+                              ("Cur"): 
+                              (String(form_label_Min_Mid_Max))
+                            )
+                          )
+                        )
+                      )
+                    )+" , ");
+    Serial.print("servo_Pwm:"+String(servo_Pwm)+",  ");
     Serial.print("div_result = "+String(div_result)+", modulo = "+String(modulo)+", ");
+    Serial.print("xPos:"+String(xPos)+", ");
     Serial.println("yPos:"+String(yPos)+", ");
   } else {
     //Serial.println("writeOneFieldToDisplay: yPos:"+String(yPos)+", chanelNum:"+String(chanelNum)+", form_label_Min_Mid_Max:"+String(form_label_Min_Mid_Max)+", servo_Pwm:"+String(servo_Pwm)+", servoPulseIndex:"+String(servoPulseIndex));
   }
 
-  uint8_t xPos = (((char_shift_x + (form_label_Min_Mid_Max*3)) * char_width_x));
   WritePulsesToDisplay::writeOneFieldToDisplay_innerPart(xPos, chr_point_shift_x, yPos, char_height_y, form_label_Min_Mid_Max, servo_Pwm, chanelNum, showDebug);
 }
 
